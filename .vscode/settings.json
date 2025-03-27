@@ -1,0 +1,13 @@
+{
+  "python.venvPath": "venv",
+  "python.terminal.activateEnvironment": true,
+  "python.terminal.activateEnvInCurrentTerminal": true,
+  "editor.formatOnSave": true,
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+  "sonarlint.connectedMode.project": {
+    "connectionId": "toomas633",
+    "projectKey": "Toomas633_Plex-Organizer"
+  }
+}
