@@ -1,4 +1,16 @@
+<img align="right" src="https://sonarcloud.io/api/project_badges/quality_gate?project=Toomas633_Plex-Organizer">
+
 # Plex Organizer
+
+- [Plex Organizer](#plex-organizer)
+- [Features](#features)
+  - [Example Directory Structure](#example-directory-structure)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Contributing](#contributing)
+- [License](#license)
+- [Issues and Feature Requests](#issues-and-feature-requests)
 
 Plex Organizer is a Python-based utility designed to help manage and organize media files for Plex Media Server. It automates tasks such as renaming files, deleting unwanted files, moving directories, and cleaning up empty folders.
 
@@ -12,13 +24,14 @@ Plex Organizer is a Python-based utility designed to help manage and organize me
 
 ### Example Directory Structure
 
-Below is an example of the directory structure that Plex Organizer processes:
-
-```plaintext
-<start_directory>/
+<div style="display: flex; gap: 10px;">
+<div style="flex: 2;">
+Example of the directory structure that Plex Organizer processes:
+<pre>
+<code>
+start_directory/
 ├── movies/
 │   ├── Venom.2018.BluRay.x264-[YTS.AM].mp4
-│   ├── Venom.Let.There.Be.Carnage.2021.1080p.BluRay.x264.AAC5.1-[YTS.MX].mp4
 │   ├── Warcraft.2016.1080p.BluRay.x264-[YTS.AG].mkv
 │   ├── 1917 (2019) [1080p] [BluRay] [5.1] [YTS.MX]/
 │   │   └── Subs/
@@ -34,45 +47,49 @@ Below is an example of the directory structure that Plex Organizer processes:
 │   │       ├── Norwegian.nor.srt
 │   │       └── Danish.dan.srt
 │   └── random_file.txt
-├── tv/
-│   ├── Black Bird/
-│   │   ├── S01E01.mp4
-│   │   ├── S01E02.mp4
-│   │   └── unwanted_file.txt
-│   ├── Colony/
-│   │   ├── S01E01.mp4
-│   │   ├── S01E02.mp4
-│   │   └── extra_file.txt
-│   └── Loki/
-│       ├── S01E01.mp4
-│       └── S01E02.mp4
-```
-
+└── tv/
+    ├── Black Bird/
+    │   ├── S01E01.mp4
+    │   ├── S01E02.mp4
+    │   └── unwanted_file.txt
+    ├── Colony/
+    │   ├── S01E01.mp4
+    │   ├── S01E02.mp4
+    │   └── extra_file.txt
+    └── Loki/
+        ├── S01E01.mp4
+        └── S01E02.mp4
+</pre>
+</code>
+</div>
+<div style="flex: 1;">
 And what it looks like afterwards:
-
-```plaintext
-<start_directory>/
-├── movies/
-│   ├── 1917 (2019) 1080p.mp4
-│   ├── 2 Fast 2 Furious (2003) 1080p.mp4
-│   ├── 6 Underground (2019) 1080p.mp4
-│   ├── Venom (2018).mp4
-│   ├── Venom Let There Be Carnage (2021) 1080p.mp4
-│   └── Warcraft (2016) 1080p.mkv
-├── tv/
-│   ├── Black Bird/
-│   │   └── Season 1/
-│   │       ├── Black Bird S01E01.mp4
-│   │       └── Black Bird S01E02.mp4
-│   ├── Colony/
-│   │   └── Season 1/
-│   │       ├── Colony S01E01.mp4
-│   │       └── Colony S01E02.mp4
-│   └── Loki/
-│       └── Season 1/
-│           ├── Loki S01E01.mp4
-│           └── Loki S01E02.mp4
-```
+<pre>
+<code>
+start_directory/
+├─ movies/
+│  ├── 1917 (2019) 1080p.mp4
+│  ├── 2 Fast 2 Furious (2003) 1080p.mp4
+│  ├── 6 Underground (2019) 1080p.mp4
+│  ├── Venom (2018).mp4
+│  └── Warcraft (2016) 1080p.mkv
+└─ tv/
+   ├── Black Bird/
+   │   └─ Season 1/
+   │     ├── Black Bird S01E01.mp4
+   │     └── Black Bird S01E02.mp4
+   ├── Colony/
+   │   └─ Season 1/
+   │     ├── Colony S01E01.mp4
+   │     └── Colony S01E02.mp4
+   └── Loki/
+      └── Season 1/
+         ├── Loki S01E01.mp4
+         └── Loki S01E02.mp4
+</pre>
+</code>
+</div>
+</div>
 
 ## Requirements
 
@@ -109,7 +126,8 @@ Run the script with the following command:
 
 Arguments:
 
-- <torrent_hash>: The hash of the torrent to be removed (use "test" for testing purposes). Argument %I in qBittorrent ui.
+- <torrent_hash>: The hash of the torrent to be removed (use "test" for testing purposes or to ignore torrent automatic removal). Argument %I in qBittorrent ui.
+  **PS!!** If hash "test" used to ignore torrent removal the torrents break when files are moved anyways, but the option is there.
 - <start_directory>: The base directory containing the tv and movies subdirectories.
 
 Example:
