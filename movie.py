@@ -27,6 +27,10 @@ def rename(directory, file):
     pattern = r"^(.*?)[.\s]?(\d{4})[.\s]?(?:.*?(\d{3,4}p))?.*"
     match = re.match(pattern, file)
 
+    if not match:
+        log_error(f"Filename does not match expected pattern: {file}. Skipping rename.")
+        return
+
     if not match.group(1):
         name = match.group(2)
         year = file.split(".")[1]

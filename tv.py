@@ -14,7 +14,7 @@ def rename(directory, root, file):
     """
     Renames a TV episode file to a standardized format.
 
-    The new name format is: "ShowName SxxExx Quality.Extension" 
+    The new name format is: "ShowName SxxExx Quality.Extension"
     (e.g., "Breaking Bad S01E01 1080p.mkv").
     If the season/episode or quality is missing, those parts are omitted.
 
@@ -32,12 +32,17 @@ def rename(directory, root, file):
     quality_pattern = re.compile(r"[. ](\d{3,4}p)", re.IGNORECASE)
 
     season_episode_match = season_episode_pattern.search(file)
-    season = f"S{season_episode_match.group(1)}" if season_episode_match else None
-    episode = f"E{season_episode_match.group(2)}" if season_episode_match else None
+    if season_episode_match:
+        season = f"S{season_episode_match.group(1)}"
+        episode = f"E{season_episode_match.group(2)}"
+        season_episode = season + episode
+    else:
+        season_episode = None
 
-    quality = quality_pattern.search(file).group(1) if quality_pattern.search(file) else None
+    quality_match = quality_pattern.search(file)
+    quality = quality_match.group(1) if quality_match else None
 
-    new_name_parts = [show_name, season + episode, quality]
+    new_name_parts = [show_name, season_episode, quality]
     new_name = (
         " ".join(part for part in new_name_parts if part) + os.path.splitext(file)[1]
     )
