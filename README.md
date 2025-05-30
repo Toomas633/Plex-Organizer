@@ -105,17 +105,35 @@ start_directory/
    git clone https://github.com/Toomas633/Plex-Organizer.git
    cd Plex-Organizer
    ```
+
 2. Set up a virtual environment:
 
    ```bash
     python -m venv venv
     source venv/bin/activate
    ```
+
 3. Install dependencies:
 
    ```bash
    pip install -r requirements.txt
    ```
+
+## Update
+
+To update to the latest version just run update.sh
+
+```bash
+./update.sh
+```
+
+or
+
+```bash
+git fetch --all
+git reset --hard origin/$(git rev-parse --abbrev-ref HEAD)
+git clean -fd
+```
 
 ## Usage
 
