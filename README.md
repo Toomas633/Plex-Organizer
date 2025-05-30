@@ -7,6 +7,7 @@
   - [Example Directory Structure](#example-directory-structure)
 - [Requirements](#requirements)
 - [Installation](#installation)
+- [Configuration](#configuration)
 - [Usage](#usage)
 - [Contributing](#contributing)
 - [License](#license)
@@ -135,9 +136,12 @@ git reset --hard origin/$(git rev-parse --abbrev-ref HEAD)
 git clean -fd
 ```
 
-## Usage
+## Configuration
 
-Change the qbittorrent url in `qb.py` `HOST` argunment to a correct one.
+All user configurations are handled in the `config.ini` file.
+**NB!! Make sure the host value under qBittorrent is correct. Otherwise it will fail to delete the completed torrent and might fail the python script entirelly.**
+
+## Usage
 
 Run the script with the following command:
 
