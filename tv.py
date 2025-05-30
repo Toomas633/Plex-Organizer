@@ -8,7 +8,7 @@ import os
 import re
 from log import log_error, log_duplicate
 from plex import has_plex_folder, delete_plex_folder
-from config import get_delete_duplicates
+from config import get_delete_duplicates, get_include_quality
 
 
 def rename(directory, root, file):
@@ -43,7 +43,11 @@ def rename(directory, root, file):
     quality_match = quality_pattern.search(file)
     quality = quality_match.group(1) if quality_match else None
 
-    new_name_parts = [show_name, season_episode, quality]
+    new_name_parts = [show_name, season_episode]
+
+    if get_include_quality() and quality:
+        new_name_parts.append(quality)
+
     new_name = (
         " ".join(part for part in new_name_parts if part) + os.path.splitext(file)[1]
     )

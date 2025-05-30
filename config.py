@@ -13,3 +13,7 @@ def get_host():
 
 def get_delete_duplicates():
     return config.getboolean("Settings", "delete_duplicates")
+
+
+def get_include_quality():
+    return config.getboolean("Settings", "include_quality")
