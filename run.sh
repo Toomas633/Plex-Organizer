@@ -1,5 +1,4 @@
 #!/bin/bash
-HOST="http://localhost:8081"
 SCRIPT_DIR="$(dirname "$0")"
 
 torrent_hash="$1"

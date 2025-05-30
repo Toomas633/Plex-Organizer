@@ -1,3 +1,9 @@
+"""
+This script organizes downloaded media files by cleaning up, renaming, and moving them
+to appropriate directories for TV and movies. It also handles unwanted files, empty folders,
+and interacts with qBittorrent and Plex folder structures.
+"""
+
 import os
 import sys
 from log import log_error
@@ -14,6 +20,15 @@ MOVIES_DIR = os.path.join(START_DIR, "movies")
 
 
 def delete_unwanted_files(directory):
+    """
+    Deletes files in the given directory (and subdirectories) that do not match allowed extensions.
+
+    Args:
+        directory (str): The directory to clean up.
+
+    Returns:
+        None
+    """
     ext_filter = (".mkv", ".!qB", ".mp4")
     for root, _, files in os.walk(directory, topdown=False):
         for file in files:
@@ -23,6 +38,15 @@ def delete_unwanted_files(directory):
 
 
 def delete_empty_directories(directory):
+    """
+    Deletes all empty subdirectories within the given directory.
+
+    Args:
+        directory (str): The directory to clean up.
+
+    Returns:
+        None
+    """
     for root, dirs, _ in os.walk(directory, topdown=False):
         for dir_name in dirs:
             dir_path = os.path.join(root, dir_name)
@@ -31,6 +55,15 @@ def delete_empty_directories(directory):
 
 
 def move_directories(directory):
+    """
+    Moves video files from subdirectories to the main directory using the appropriate handler.
+
+    Args:
+        directory (str): The target directory (MOVIES_DIR or TV_DIR).
+
+    Returns:
+        None
+    """
     inc_filter = (".mkv", ".mp4")
     for root, _, files in os.walk(directory, topdown=False):
         for file in files:
@@ -42,6 +75,15 @@ def move_directories(directory):
 
 
 def rename_files(directory):
+    """
+    Renames video files in the given directory using the appropriate handler.
+
+    Args:
+        directory (str): The directory to process (MOVIES_DIR or TV_DIR).
+
+    Returns:
+        None
+    """
     inc_filter = (".mkv", ".mp4")
     for root, _, files in os.walk(directory, topdown=False):
         for file in files:
@@ -53,6 +95,13 @@ def rename_files(directory):
 
 
 def main():
+    """
+    Main entry point for the organizer script.
+    Handles argument parsing, torrent removal, and file organization steps.
+
+    Returns:
+        None
+    """
     try:
         if len(sys.argv) < 3:
             log_error("Error: No directory provided.")
@@ -67,7 +116,7 @@ def main():
             rename_files(directory)
             move_directories(directory)
             delete_empty_directories(directory)
-    except Exception as e:
+    except (OSError, ValueError) as e:
         log_error(f"Error occured: {e}")
 
 

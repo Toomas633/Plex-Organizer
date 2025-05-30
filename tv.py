@@ -1,3 +1,9 @@
+"""
+This module provides functions for renaming and moving TV episode files
+to standardized formats and directories, including handling Plex folders
+and logging errors or duplicates.
+"""
+
 import os
 import re
 from log import log_error, log_duplicate
@@ -5,6 +11,21 @@ from plex import has_plex_folder, delete_plex_folder
 
 
 def rename(directory, root, file):
+    """
+    Renames a TV episode file to a standardized format.
+
+    The new name format is: "ShowName SxxExx Quality.Extension" 
+    (e.g., "Breaking Bad S01E01 1080p.mkv").
+    If the season/episode or quality is missing, those parts are omitted.
+
+    Args:
+        directory (str): The base TV directory.
+        root (str): The current directory containing the file.
+        file (str): The name of the file to rename.
+
+    Returns:
+        None
+    """
     show_name = os.path.relpath(root, directory).split(os.sep)[0]
 
     season_episode_pattern = re.compile(r"[. ]S(\d{2})E(\d{2})", re.IGNORECASE)
@@ -14,8 +35,7 @@ def rename(directory, root, file):
     season = f"S{season_episode_match.group(1)}" if season_episode_match else None
     episode = f"E{season_episode_match.group(2)}" if season_episode_match else None
 
-    quality_match = quality_pattern.search(file)
-    quality = quality_match.group(1) if quality_match else None
+    quality = quality_pattern.search(file).group(1) if quality_pattern.search(file) else None
 
     new_name_parts = [show_name, season + episode, quality]
     new_name = (
@@ -37,11 +57,25 @@ def rename(directory, root, file):
 
     try:
         os.rename(old_path, new_path)
-    except Exception as e:
+    except OSError as e:
         log_error(f"Failed to rename {old_path} to {new_path}: {e}")
 
 
 def move(directory, root, file):
+    """
+    Moves a TV episode file to its correct season folder.
+
+    The file is moved to: "<directory>/<ShowName>/Season <xx>/"
+    If the season cannot be determined, the file remains in place.
+
+    Args:
+        directory (str): The base TV directory.
+        root (str): The current directory containing the file.
+        file (str): The name of the file to move.
+
+    Returns:
+        None
+    """
     show_name = os.path.relpath(root, directory).split(os.sep)[0]
     season_pattern = re.compile(r"S(\d{2})", re.IGNORECASE)
     season_match = season_pattern.search(file)
@@ -71,5 +105,5 @@ def move(directory, root, file):
 
     try:
         os.rename(old_path, new_path)
-    except Exception as e:
+    except OSError as e:
         log_error(f"Failed to move {old_path} to {new_path}: {e}")

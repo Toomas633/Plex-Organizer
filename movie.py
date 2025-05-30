@@ -1,3 +1,9 @@
+"""
+This module provides functions for renaming and moving movie files
+to standardized formats and directories, including handling Plex folders
+and logging errors or duplicates.
+"""
+
 import os
 import re
 from log import log_error, log_duplicate
@@ -5,6 +11,19 @@ from plex import has_plex_folder, delete_plex_folder
 
 
 def rename(directory, file):
+    """
+    Renames a movie file in the specified directory to a standardized format.
+
+    The new name format is: "Name (Year) Quality.Extension" (e.g., "Inception (2010) 1080p.mkv").
+    If the year or quality is missing, those parts are omitted.
+
+    Args:
+        directory (str): The directory containing the file.
+        file (str): The name of the file to rename.
+
+    Returns:
+        None
+    """
     pattern = r"^(.*?)[.\s]?(\d{4})[.\s]?(?:.*?(\d{3,4}p))?.*"
     match = re.match(pattern, file)
 
@@ -41,11 +60,25 @@ def rename(directory, file):
 
     try:
         os.rename(old_path, new_path)
-    except Exception as e:
+    except OSError as e:
         log_error(f"Failed to rename {old_path} to {new_path}: {e}")
 
 
 def move(destination_dir, source_dir, file_name):
+    """
+    Moves a movie file from the source directory to the destination directory.
+
+    If the source directory contains a Plex folder, it deletes it before moving.
+    Handles duplicate files and missing source files gracefully.
+
+    Args:
+        destination_dir (str): The directory to move the file to.
+        source_dir (str): The directory to move the file from.
+        file_name (str): The name of the file to move.
+
+    Returns:
+        None
+    """
     source_path = os.path.join(source_dir, file_name)
     destination_path = os.path.join(destination_dir, file_name)
 
@@ -67,6 +100,5 @@ def move(destination_dir, source_dir, file_name):
 
     try:
         os.rename(source_path, destination_path)
-
-    except Exception as e:
+    except OSError as e:
         log_error(f"Failed to move {source_path} to {destination_path}: {e}")

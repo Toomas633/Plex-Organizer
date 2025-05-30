@@ -1,3 +1,9 @@
+"""
+Logging utilities for Plex Organizer.
+
+Provides functions to log messages, errors, and duplicate file events to a log file.
+"""
+
 import os
 from datetime import datetime
 
@@ -6,15 +12,43 @@ LOG_PATH = "qb_organizer.log"
 
 
 def log_message(level, message):
-    with open(os.path.join(SCRIPT_DIR, LOG_PATH), "a") as log_file:
+    """
+    Writes a log message with a specified level to the log file.
+
+    Args:
+        level (str): The log level (e.g., "ERROR", "DUPLICATE").
+        message (str): The message to log.
+
+    Returns:
+        None
+    """
+    with open(os.path.join(SCRIPT_DIR, LOG_PATH), "a", encoding="utf-8") as log_file:
         log_file.write(
             f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - [{level}] - {message}\n"
         )
 
 
 def log_error(message):
+    """
+    Logs an error message to the log file.
+
+    Args:
+        message (str): The error message to log.
+
+    Returns:
+        None
+    """
     log_message("ERROR", message)
 
 
 def log_duplicate(message):
+    """
+    Logs a duplicate file message to the log file.
+
+    Args:
+        message (str): The duplicate file message to log.
+
+    Returns:
+        None
+    """
     log_message("DUPLICATE", message)
