@@ -6,12 +6,10 @@ and logging errors or duplicates.
 
 import os
 import re
-from log import log_error, log_duplicate
-from plex import has_plex_folder, delete_plex_folder
-from config import get_delete_duplicates, get_include_quality
+from utils import move_file, create_name
 
 
-def rename(directory, root, file):
+def rename(directory: str, root: str, file: str):
     """
     Renames a TV episode file to a standardized format.
 
@@ -29,55 +27,32 @@ def rename(directory, root, file):
     """
     show_name = os.path.relpath(root, directory).split(os.sep)[0]
 
-    season_episode_pattern = re.compile(r"[. ]S(\d{2})E(\d{2})", re.IGNORECASE)
+    season_episode_pattern = re.compile(r"[. ]S(\d{2})[ .]?E(\d{2})", re.IGNORECASE)
     quality_pattern = re.compile(r"[. ](\d{3,4}p)", re.IGNORECASE)
 
     season_episode_match = season_episode_pattern.search(file)
     if season_episode_match:
-        season = f"S{season_episode_match.group(1)}"
-        episode = f"E{season_episode_match.group(2)}"
-        season_episode = season + episode
+        season_episode = (
+            f"S{season_episode_match.group(1)}E{season_episode_match.group(2)}"
+        )
     else:
         season_episode = None
 
     quality_match = quality_pattern.search(file)
-    quality = quality_match.group(1) if quality_match else None
 
-    new_name_parts = [show_name, season_episode]
-
-    if get_include_quality() and quality:
-        new_name_parts.append(quality)
-
-    new_name = (
-        " ".join(part for part in new_name_parts if part) + os.path.splitext(file)[1]
+    new_name = create_name(
+        [show_name, season_episode],
+        os.path.splitext(file)[1],
+        quality_match.group(1) if quality_match else None,
     )
 
     old_path = os.path.join(root, file)
     new_path = os.path.join(root, new_name)
 
-    if not os.path.exists(old_path):
-        log_error(f"File not found: {old_path}. Skipping rename.")
-        return
-
-    if os.path.exists(new_path):
-        if get_delete_duplicates():
-            try:
-                os.remove(old_path)
-            except OSError as e:
-                log_error(f"Failed to delete duplicate {old_path}: {e}")
-        else:
-            log_duplicate(
-                f"File already exists: {new_path}. Skipping rename for {old_path}."
-            )
-        return
-
-    try:
-        os.rename(old_path, new_path)
-    except OSError as e:
-        log_error(f"Failed to rename {old_path} to {new_path}: {e}")
+    move_file(old_path, new_path, False)
 
 
-def move(directory, root, file):
+def move(directory: str, root: str, file: str):
     """
     Moves a TV episode file to its correct season folder.
 
@@ -95,9 +70,9 @@ def move(directory, root, file):
     show_name = os.path.relpath(root, directory).split(os.sep)[0]
     season_pattern = re.compile(r"S(\d{2})", re.IGNORECASE)
     season_match = season_pattern.search(file)
-    season = int(season_match.group(1)) if season_match else None
+    season = int(season_match.group(1)) if season_match else 0
 
-    correct_path = os.path.join(directory, show_name, f"Season {season}")
+    correct_path = os.path.join(directory, show_name, f"Season {season:02d}")
 
     old_path = os.path.join(root, file)
     new_path = os.path.join(correct_path, file)
@@ -105,21 +80,7 @@ def move(directory, root, file):
     if root == correct_path:
         return
 
-    if has_plex_folder(root):
-        delete_plex_folder(root)
-
     if not os.path.exists(correct_path):
         os.makedirs(correct_path)
 
-    if not os.path.exists(old_path):
-        log_error(f"File not found: {old_path}. Skipping move.")
-        return
-
-    if os.path.exists(new_path):
-        log_duplicate(f"File already exists: {new_path}. Skipping move for {old_path}.")
-        return
-
-    try:
-        os.rename(old_path, new_path)
-    except OSError as e:
-        log_error(f"Failed to move {old_path} to {new_path}: {e}")
+    move_file(old_path, new_path)

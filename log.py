@@ -8,10 +8,10 @@ import os
 from datetime import datetime
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-LOG_PATH = "qb_organizer.log"
+LOG_PATH = "log.log"
 
 
-def log_message(level, message):
+def log_message(level: str, message: str):
     """
     Writes a log message with a specified level to the log file.
 
@@ -28,7 +28,7 @@ def log_message(level, message):
         )
 
 
-def log_error(message):
+def log_error(message: str):
     """
     Logs an error message to the log file.
 
@@ -41,7 +41,7 @@ def log_error(message):
     log_message("ERROR", message)
 
 
-def log_duplicate(message):
+def log_duplicate(message: str):
     """
     Logs a duplicate file message to the log file.
 

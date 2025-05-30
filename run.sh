@@ -1,11 +1,11 @@
 #!/bin/bash
 SCRIPT_DIR="$(dirname "$0")"
 
-torrent_hash="$1"
-start_dir="$2"
+torrent_hash="$2"
+start_dir="$1"
 
-if [ -z "$torrent_hash" ] || [ -z "$start_dir" ]; then
-    echo "Usage: $0 <torrent_hash> <start_dir>"
+if [ -z "$start_dir" ]; then
+    echo "Usage: $0 <start_dir> <optional_torrent_hash>"
     exit 1
 fi
 
@@ -16,4 +16,4 @@ fi
 
 source $SCRIPT_DIR/venv/bin/activate
 
-python3 $SCRIPT_DIR/qb_organizer.py $torrent_hash $start_dir
+python3 $SCRIPT_DIR/qb_organizer.py $start_dir $torrent_hash

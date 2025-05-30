@@ -9,7 +9,7 @@ from log import log_error
 from config import get_host
 
 
-def remove_torrent(torrent_hash):
+def remove_torrent(torrent_hash: str):
     """
     Removes a torrent from qBittorrent using its hash.
 

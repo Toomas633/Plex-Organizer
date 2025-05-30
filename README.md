@@ -146,7 +146,7 @@ All user configurations are handled in the `config.ini` file.
 Run the script with the following command:
 
 ```bash
-/bin/bash <path_to_script>/run.sh <torrent_hash> <start_directory>
+/bin/bash <path_to_script>/run.sh <start_directory> <torrent_hash>
 ```
 
 Arguments:

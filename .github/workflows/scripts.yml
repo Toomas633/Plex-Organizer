@@ -1,0 +1,31 @@
+name: Make scripts executable
+
+on: [push]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Make all .sh scripts executable
+        run: |
+          shopt -s globstar
+          chmod a+x **/*.sh || true
+      - name: Commit and push changes
+        run: |
+          git diff
+
+          if [ -z "$(git diff)" ]; then
+            echo "No .sh files to update"
+            exit 0
+          fi
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "Make all .sh scripts executable"
+          git push

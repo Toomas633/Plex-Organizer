@@ -42,7 +42,7 @@ if exist "%FULL_VENV_PATH%\Scripts\activate.bat" (
 if exist "%FULL_SCRIPT_PATH%" (
     echo Running %PYTHON_SCRIPT%...
 
-    python "%FULL_SCRIPT_PATH%" "test" "%FULL_TARGET_DIR%"
+    python "%FULL_SCRIPT_PATH%" "%FULL_TARGET_DIR%"
 ) else (
     echo Python script %PYTHON_SCRIPT% not found!
     exit 1
