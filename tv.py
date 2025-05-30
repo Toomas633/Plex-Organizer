@@ -65,7 +65,6 @@ def rename(directory, root, file):
                 os.remove(old_path)
             except OSError as e:
                 log_error(f"Failed to delete duplicate {old_path}: {e}")
-            return
         else:
             log_duplicate(
                 f"File already exists: {new_path}. Skipping rename for {old_path}."

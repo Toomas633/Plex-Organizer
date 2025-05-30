@@ -11,6 +11,7 @@ from qb import remove_torrent
 import tv
 import movie
 from plex import is_plex_folder
+from config import ensure_config_exists
 
 TORRENT_HASH = sys.argv[1]
 START_DIR = sys.argv[2]
@@ -121,4 +122,5 @@ def main():
 
 
 if __name__ == "__main__":
+    ensure_config_exists()
     main()
