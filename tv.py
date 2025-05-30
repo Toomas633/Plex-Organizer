@@ -8,6 +8,7 @@ import os
 import re
 from log import log_error, log_duplicate
 from plex import has_plex_folder, delete_plex_folder
+from config import get_delete_duplicates
 
 
 def rename(directory, root, file):
@@ -55,9 +56,16 @@ def rename(directory, root, file):
         return
 
     if os.path.exists(new_path):
-        log_duplicate(
-            f"File already exists: {new_path}. Skipping rename for {old_path}."
-        )
+        if get_delete_duplicates():
+            try:
+                os.remove(old_path)
+            except OSError as e:
+                log_error(f"Failed to delete duplicate {old_path}: {e}")
+            return
+        else:
+            log_duplicate(
+                f"File already exists: {new_path}. Skipping rename for {old_path}."
+            )
         return
 
     try:

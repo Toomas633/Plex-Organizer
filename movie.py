@@ -8,6 +8,7 @@ import os
 import re
 from log import log_error, log_duplicate
 from plex import has_plex_folder, delete_plex_folder
+from config import get_delete_duplicates
 
 
 def rename(directory, file):
@@ -97,9 +98,15 @@ def move(destination_dir, source_dir, file_name):
         return
 
     if os.path.exists(destination_path):
-        log_duplicate(
-            f"File already exists: {destination_path}. Skipping rename for {source_path}."
-        )
+        if get_delete_duplicates():
+            try:
+                os.remove(source_path)
+            except OSError as e:
+                log_error(f"Failed to delete duplicate {source_path}: {e}")
+        else:
+            log_duplicate(
+                f"File already exists: {destination_path}. Skipping rename for {source_path}."
+            )
         return
 
     try:

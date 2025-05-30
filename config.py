@@ -9,3 +9,7 @@ config.read(CONFIG_PATH)
 
 def get_host():
     return config.get("qBittorrent", "host")
+
+
+def get_delete_duplicates():
+    return config.getboolean("Settings", "delete_duplicates")
