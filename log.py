@@ -6,6 +6,7 @@ Provides functions to log messages, errors, and duplicate file events to a log f
 
 import os
 from datetime import datetime
+from config import get_clear_log
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_PATH = "log.log"
@@ -52,3 +53,17 @@ def log_duplicate(message: str):
         None
     """
     log_message("DUPLICATE", message)
+
+
+def check_clear_log():
+    """
+    Clears the log file if config value set to true by truncating it.
+
+    Returns:
+        None
+    """
+    if get_clear_log():
+        with open(
+            os.path.join(SCRIPT_DIR, LOG_PATH), "w", encoding="utf-8"
+        ) as log_file:
+            log_file.truncate(0)

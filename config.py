@@ -15,7 +15,11 @@ def ensure_config_exists():
     """
     default_config = {
         "qBittorrent": {"host": "http://localhost:8081"},
-        "Settings": {"delete_duplicates": "false", "include_quality": "true"},
+        "Settings": {
+            "delete_duplicates": "false",
+            "include_quality": "true",
+            "clear_log": "false",
+        },
     }
 
     if os.path.exists(CONFIG_PATH):
@@ -85,3 +89,9 @@ def get_include_quality():
     """Return True if quality should be included in settings."""
     config = get_config()
     return config.getboolean("Settings", "include_quality")
+
+
+def get_clear_log():
+    """Return True if the log should be cleared on startup."""
+    config = get_config()
+    return config.getboolean("Settings", "clear_log")

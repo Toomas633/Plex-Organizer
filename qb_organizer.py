@@ -151,4 +151,5 @@ def main():
 
 if __name__ == "__main__":
     ensure_config_exists()
+    check_clear_log()
     main()
