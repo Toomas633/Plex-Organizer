@@ -9,11 +9,15 @@
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Usage](#usage)
+  - [Manual running](#manual-running)
+  - [Automated running](#automated-running)
 - [Contributing](#contributing)
 - [License](#license)
 - [Issues and Feature Requests](#issues-and-feature-requests)
 
 Plex Organizer is a Python-based utility designed to help manage and organize media files for Plex Media Server. It automates tasks such as renaming files, deleting unwanted files, moving directories, and cleaning up empty folders.
+
+**_NB!! Any data loss is not on me but you can still report any bugs or faults you find in issues_**
 
 ## Features
 
@@ -143,7 +147,19 @@ All user configurations are handled in the `config.ini` file.
 
 ## Usage
 
-Run the script with the following command:
+Start directory should have the folders for movies and tv as shown in the example. Show names are taken from the parent folder inside tv folder and only episode, season and quality are taken from the file names.
+
+### Manual running
+
+To run manually just go to the Plex-Organizer cloned or downloaded folder and run:
+
+```bash
+./run.sh <start_directory>
+```
+
+### Automated running
+
+Add this command to qBittorrent options under "Run external program on torrent finished":
 
 ```bash
 /bin/bash <path_to_script>/run.sh <start_directory> <torrent_hash>
