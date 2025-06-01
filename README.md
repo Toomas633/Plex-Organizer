@@ -167,9 +167,9 @@ Add this command to qBittorrent options under "Run external program on torrent f
 
 Arguments:
 
-- <torrent_hash>: The hash of the torrent to be removed (use "test" for testing purposes or to ignore torrent automatic removal). Argument %I in qBittorrent ui.
   **PS!!** If hash "test" used to ignore torrent removal the torrents break when files are moved anyways, but the option is there.
 - <start_directory>: The base directory containing the tv and movies subdirectories.
+- <torrent_hash>: **Optional:** The hash of the torrent to be removed (use "test" for testing purposes or to ignore torrent automatic removal). Argument %I in qBittorrent ui.
 
 Example:
 

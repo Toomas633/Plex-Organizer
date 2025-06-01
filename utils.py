@@ -77,7 +77,7 @@ def move_file(source_path: str, destination_path: str, move=True):
         )
 
 
-def create_name(parts: list, extension: str, quality: str | None = None):
+def create_name(parts: list[str], extension: str, quality: str | None = None):
     """
     Create a standardized file name from a list of parts.
 
@@ -91,3 +91,17 @@ def create_name(parts: list, extension: str, quality: str | None = None):
         parts.append(quality)
 
     return " ".join(part for part in parts if part) + extension
+
+
+def is_tv_dir(root: str):
+    """
+    Check if the directory is in a TV show directory.
+
+    Args:
+        root (str): The root directory to check.
+
+    Returns:
+        bool: True if the directory is in a TV show directory, False otherwise.
+    """
+    return "tv" in root.split(os.sep)
+

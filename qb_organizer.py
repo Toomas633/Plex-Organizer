@@ -11,7 +11,7 @@ from log import log_error, check_clear_log
 from qb import remove_torrent
 import tv
 import movie
-from utils import find_folders, is_plex_folder
+from utils import find_folders, is_plex_folder, is_tv_dir
 from config import ensure_config_exists
 
 START_DIR = sys.argv[1] if len(sys.argv) > 1 else None
@@ -96,10 +96,10 @@ def move_directories(directory: str):
     for root, _, files in os.walk(directory, topdown=False):
         for file in files:
             if file.endswith(inc_filter) and not is_plex_folder(root):
-                if directory == MOVIES_DIR:
-                    movie.move(directory, root, file)
-                else:
+                if is_tv_dir(root):
                     tv.move(directory, root, file)
+                else:
+                    movie.move(directory, root, file)
 
 
 def rename_files(directory: str):
@@ -116,7 +116,7 @@ def rename_files(directory: str):
     for root, _, files in os.walk(directory, topdown=False):
         for file in files:
             if file.endswith(inc_filter) and not is_plex_folder(root):
-                if directory == TV_DIR:
+                if is_tv_dir(root):
                     tv.rename(directory, root, file)
                 else:
                     movie.rename(root, file)
@@ -130,12 +130,15 @@ def main():
     Returns:
         None
     """
-    try:
-        if len(sys.argv) < 2:
-            log_error("Error: No directory provided.")
-            log_error("Usage: qb_delete.py <dir> <torrent_hash>")
-            sys.exit(1)
 
+    ensure_config_exists()
+    check_clear_log()
+    if len(sys.argv) < 2:
+        log_error("Error: No directory provided.")
+        log_error("Usage: qb_delete.py <dir> <optional_torrent_hash>")
+        sys.exit(1)
+
+    try:
         if TORRENT_HASH:
             remove_torrent(TORRENT_HASH)
 
@@ -150,6 +153,4 @@ def main():
 
 
 if __name__ == "__main__":
-    ensure_config_exists()
-    check_clear_log()
     main()
