@@ -11,6 +11,7 @@ from log import log_error, check_clear_log
 from qb import remove_torrent
 import tv
 import movie
+from const import UNWANTED_FOLDERS, INC_FILTER, EXT_FILTER
 from utils import find_folders, is_plex_folder, is_tv_dir, is_main_folder
 from config import ensure_config_exists
 
@@ -30,37 +31,25 @@ def delete_unwanted_files(directory: str):
     Returns:
         None
     """
-    unwanted_folders = {
-        "Plex Versions",
-        "Extras",
-        "Sample",
-        "Samples",
-        "Subs",
-        "Subtitles",
-        "Proof",
-        "Screenshots",
-        "Artwork",
-        "Cover",
-        "Covers",
-        "Poster",
-    }
-    ext_filter = (".mkv", ".!qB", ".mp4")
-
     for root, _, files in os.walk(directory, topdown=False):
         for folder in find_folders(root):
-            try:
-                folder_parts = set(folder.split(os.sep))
-                if unwanted_folders & folder_parts:
-                    shutil.rmtree(folder)
-            except OSError as e:
-                log_error(f"Failed to delete folder {folder}: {e}")
-        for file in files:
-            if not file.endswith(ext_filter):
-                file_path = os.path.join(root, file)
+            folder_parts = {os.path.normcase(part) for part in folder.split(os.sep)}
+            if any(
+                os.path.normcase(unwanted) in folder_parts
+                for unwanted in UNWANTED_FOLDERS
+            ):
                 try:
-                    os.remove(file_path)
+                    shutil.rmtree(folder)
                 except OSError as e:
-                    log_error(f"Failed to delete file {file_path}: {e}")
+                    log_error(f"Failed to delete folder {folder}: {e}")
+
+        unwanted_files = [f for f in files if not f.endswith(EXT_FILTER)]
+        for file in unwanted_files:
+            file_path = os.path.join(root, file)
+            try:
+                os.remove(file_path)
+            except OSError as e:
+                log_error(f"Failed to delete file {file_path}: {e}")
 
 
 def delete_empty_directories(directory: str):
@@ -110,10 +99,9 @@ def rename_files(directory: str):
     Returns:
         None
     """
-    inc_filter = (".mkv", ".mp4")
     for root, _, files in os.walk(directory, topdown=False):
         for file in files:
-            if file.endswith(inc_filter) and not is_plex_folder(root):
+            if file.endswith(INC_FILTER) and not is_plex_folder(root):
                 if is_tv_dir(root):
                     tv.rename(directory, root, file, not is_main_folder(START_DIR))
                 else:
