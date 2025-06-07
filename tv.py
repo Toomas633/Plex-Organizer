@@ -9,7 +9,7 @@ import re
 from utils import move_file, create_name
 
 
-def rename(directory: str, root: str, file: str):
+def rename(directory: str, root: str, file: str, take_name_from_root=False):
     """
     Renames a TV episode file to a standardized format.
 
@@ -25,7 +25,10 @@ def rename(directory: str, root: str, file: str):
     Returns:
         None
     """
-    show_name = os.path.relpath(root, directory).split(os.sep)[0]
+    if not take_name_from_root:
+        show_name = os.path.relpath(root, directory).split(os.sep)[0]
+    else:
+        show_name = directory.split(os.sep)[-1]
 
     season_episode_pattern = re.compile(r"[. ]S(\d{2})[ .]?E(\d{2})", re.IGNORECASE)
     quality_pattern = re.compile(r"[. ](\d{3,4}p)", re.IGNORECASE)
@@ -52,7 +55,7 @@ def rename(directory: str, root: str, file: str):
     move_file(old_path, new_path, False)
 
 
-def move(directory: str, root: str, file: str):
+def move(directory: str, root: str, file: str, move_to_root=False):
     """
     Moves a TV episode file to its correct season folder.
 
@@ -67,12 +70,15 @@ def move(directory: str, root: str, file: str):
     Returns:
         None
     """
-    show_name = os.path.relpath(root, directory).split(os.sep)[0]
     season_pattern = re.compile(r"S(\d{2})", re.IGNORECASE)
     season_match = season_pattern.search(file)
     season = int(season_match.group(1)) if season_match else 0
 
-    correct_path = os.path.join(directory, show_name, f"Season {season:02d}")
+    if not move_to_root:
+        show_name = os.path.relpath(root, directory).split(os.sep)[0]
+        correct_path = os.path.join(directory, show_name, f"Season {season:02d}")
+    else:
+        correct_path = os.path.join(directory, f"Season {season:02d}")
 
     old_path = os.path.join(root, file)
     new_path = os.path.join(correct_path, file)

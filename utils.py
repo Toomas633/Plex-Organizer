@@ -77,7 +77,7 @@ def move_file(source_path: str, destination_path: str, move=True):
         )
 
 
-def create_name(parts: list[str], extension: str, quality: str | None = None):
+def create_name(parts: list[str | None], extension: str, quality: str | None = None):
     """
     Create a standardized file name from a list of parts.
 
@@ -105,3 +105,18 @@ def is_tv_dir(root: str):
     """
     return "tv" in root.split(os.sep)
 
+
+def is_main_folder(start: str):
+    """
+    Check if the directory is the main folder for movies or TV shows.
+
+    Args:
+        start (str): The directory to check.
+
+    Returns:
+        bool: True if the directory is the main folder, False otherwise.
+    """
+    folders = []
+    for part in find_folders(start):
+        folders.append(part.split(os.sep)[-1])
+    return "movies" in folders or "tv" in folders

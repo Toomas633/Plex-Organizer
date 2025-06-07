@@ -11,14 +11,12 @@ from log import log_error, check_clear_log
 from qb import remove_torrent
 import tv
 import movie
-from utils import find_folders, is_plex_folder, is_tv_dir
+from utils import find_folders, is_plex_folder, is_tv_dir, is_main_folder
 from config import ensure_config_exists
 
-START_DIR = sys.argv[1] if len(sys.argv) > 1 else None
-TORRENT_HASH = sys.argv[2] if len(sys.argv) > 2 else None
 
-TV_DIR = os.path.join(START_DIR, "tv")
-MOVIES_DIR = os.path.join(START_DIR, "movies")
+START_DIR = sys.argv[1]
+TORRENT_HASH = sys.argv[2] if len(sys.argv) > 2 else None
 
 
 def delete_unwanted_files(directory: str):
@@ -97,7 +95,7 @@ def move_directories(directory: str):
         for file in files:
             if file.endswith(inc_filter) and not is_plex_folder(root):
                 if is_tv_dir(root):
-                    tv.move(directory, root, file)
+                    tv.move(directory, root, file, not is_main_folder(START_DIR))
                 else:
                     movie.move(directory, root, file)
 
@@ -117,7 +115,7 @@ def rename_files(directory: str):
         for file in files:
             if file.endswith(inc_filter) and not is_plex_folder(root):
                 if is_tv_dir(root):
-                    tv.rename(directory, root, file)
+                    tv.rename(directory, root, file, not is_main_folder(START_DIR))
                 else:
                     movie.rename(root, file)
 
@@ -142,7 +140,16 @@ def main():
         if TORRENT_HASH:
             remove_torrent(TORRENT_HASH)
 
-        for directory in [MOVIES_DIR, TV_DIR]:
+        directories = []
+        if is_main_folder(START_DIR):
+            directories = [
+                os.path.join(START_DIR, "tv"),
+                os.path.join(START_DIR, "movies"),
+            ]
+        else:
+            directories = [START_DIR]
+
+        for directory in directories:
             delete_unwanted_files(directory)
             delete_empty_directories(directory)
             rename_files(directory)

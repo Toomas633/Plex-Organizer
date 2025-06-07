@@ -147,7 +147,10 @@ All user configurations are handled in the `config.ini` file.
 
 ## Usage
 
-Start directory should have the folders for movies and tv as shown in the example. Show names are taken from the parent folder inside tv folder and only episode, season and quality are taken from the file names.
+Start directory should have either...
+
+1. The folders for movies and tv as shown in the example. Show names are taken from the parent folder inside tv folder and only episode, season and quality are taken from the file names.
+2. Just the given torrent save path folder (%D option in qBittorrent)
 
 ### Manual running
 
@@ -167,7 +170,6 @@ Add this command to qBittorrent options under "Run external program on torrent f
 
 Arguments:
 
-  **PS!!** If hash "test" used to ignore torrent removal the torrents break when files are moved anyways, but the option is there.
 - <start_directory>: The base directory containing the tv and movies subdirectories.
 - <torrent_hash>: **Optional:** The hash of the torrent to be removed (use "test" for testing purposes or to ignore torrent automatic removal). Argument %I in qBittorrent ui.
 
@@ -175,7 +177,8 @@ Example:
 
 ![Example config image](.github/images/image.png)
 
-This will remove the torrent with the given hash and process the directories /mnt/media/tv and /mnt/media/movies.
+1. Or use **%D** instead of `/mnt/share` to organize the specific torrent folder only on completion
+2. `/mnt/share` will remove the torrent with the given hash and process the directories `/mnt/media/tv` and `/mnt/media/movies`.
 
 ## Contributing
 
