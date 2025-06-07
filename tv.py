@@ -6,7 +6,7 @@ and logging errors or duplicates.
 
 import os
 import re
-from utils import move_file, create_name
+from utils import move_file, create_name, capitalize
 
 
 def rename(directory: str, root: str, file: str, take_name_from_root=False):
@@ -26,9 +26,9 @@ def rename(directory: str, root: str, file: str, take_name_from_root=False):
         None
     """
     if not take_name_from_root:
-        show_name = os.path.relpath(root, directory).split(os.sep)[0]
+        show_name = capitalize(os.path.relpath(root, directory).split(os.sep)[0])
     else:
-        show_name = directory.split(os.sep)[-1]
+        show_name = capitalize(directory.split(os.sep)[-1])
 
     season_episode_pattern = re.compile(r"[. ]S(\d{2})[ .]?E(\d{2})", re.IGNORECASE)
     quality_pattern = re.compile(r"[. ](\d{3,4}p)", re.IGNORECASE)

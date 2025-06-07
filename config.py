@@ -19,6 +19,7 @@ def ensure_config_exists():
             "delete_duplicates": "false",
             "include_quality": "true",
             "clear_log": "false",
+            "capitalize": "true",
         },
     }
 
@@ -82,16 +83,22 @@ def get_host():
 def get_delete_duplicates():
     """Return True if duplicate deletion is enabled in settings."""
     config = get_config()
-    return config.getboolean("Settings", "delete_duplicates")
+    return config.getboolean("Settings", "delete_duplicates", fallback=False)
 
 
 def get_include_quality():
     """Return True if quality should be included in settings."""
     config = get_config()
-    return config.getboolean("Settings", "include_quality")
+    return config.getboolean("Settings", "include_quality", fallback=True)
 
 
 def get_clear_log():
     """Return True if the log should be cleared on startup."""
     config = get_config()
-    return config.getboolean("Settings", "clear_log")
+    return config.getboolean("Settings", "clear_log", fallback=False)
+
+
+def get_capitalize():
+    """Return True if file names should be capitalized."""
+    config = get_config()
+    return config.getboolean("Settings", "capitalize", fallback=True)

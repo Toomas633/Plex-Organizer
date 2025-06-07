@@ -2,7 +2,7 @@
 
 import os
 from log import log_error, log_duplicate
-from config import get_delete_duplicates, get_include_quality
+from config import get_delete_duplicates, get_include_quality, get_capitalize
 
 
 def is_plex_folder(path: str):
@@ -120,3 +120,48 @@ def is_main_folder(start: str):
     for part in find_folders(start):
         folders.append(part.split(os.sep)[-1])
     return "movies" in folders or "tv" in folders
+
+
+def capitalize(title: str):
+    """
+    Capitalize a string like a TV or movie title (title case).
+
+    Args:
+        string (str): The string to capitalize.
+
+    Returns:
+        str: The title-cased string.
+    """
+    if not get_capitalize():
+        return title
+
+    minor_words = {
+        "a",
+        "an",
+        "and",
+        "as",
+        "at",
+        "but",
+        "by",
+        "for",
+        "in",
+        "nor",
+        "of",
+        "on",
+        "or",
+        "so",
+        "the",
+        "to",
+        "up",
+        "yet",
+    }
+    words = title.split()
+    if not words:
+        return ""
+    result = []
+    for i, word in enumerate(words):
+        if i == 0 or i == len(words) - 1 or word.lower() not in minor_words:
+            result.append(word.capitalize())
+        else:
+            result.append(word.lower())
+    return " ".join(result)

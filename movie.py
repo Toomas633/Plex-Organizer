@@ -7,7 +7,7 @@ and logging errors or duplicates.
 import os
 import re
 from log import log_error
-from utils import move_file, create_name
+from utils import move_file, create_name, capitalize
 
 
 def rename(root: str, file: str):
@@ -48,7 +48,7 @@ def rename(root: str, file: str):
             year = years[1]
             name = f"{name} {years[0]}"
 
-    name_parts = [name]
+    name_parts = [capitalize(name) if name else None]
 
     if year:
         name_parts.append(f"({year})")
