@@ -21,6 +21,12 @@ def ensure_config_exists():
             "clear_log": "false",
             "capitalize": "true",
         },
+        "Logging": {
+            "enable_logging": "true",
+            "log_file": "qbittorrent.log",
+            "clear_log": "false",
+            "timestamped_log_files": "false",
+        },
     }
 
     if os.path.exists(CONFIG_PATH):
@@ -42,6 +48,13 @@ def check_config(default_config: dict):
     for section, options in default_config.items():
         if not config.has_section(section):
             config.add_section(section)
+            changed = True
+        existing_options = (
+            set(config.options(section)) if config.has_section(section) else set()
+        )
+        default_options = set(options.keys())
+        for opt in existing_options - default_options:
+            config.remove_option(section, opt)
             changed = True
         for key, value in options.items():
             if not config.has_option(section, key):
@@ -92,13 +105,31 @@ def get_include_quality():
     return config.getboolean("Settings", "include_quality", fallback=True)
 
 
-def get_clear_log():
-    """Return True if the log should be cleared on startup."""
-    config = get_config()
-    return config.getboolean("Settings", "clear_log", fallback=False)
-
-
 def get_capitalize():
     """Return True if file names should be capitalized."""
     config = get_config()
     return config.getboolean("Settings", "capitalize", fallback=True)
+
+
+def get_enable_logging():
+    """Return True if logging is enabled."""
+    config = get_config()
+    return config.getboolean("Logging", "enable_logging", fallback=True)
+
+
+def get_log_file():
+    """Return the log file path."""
+    config = get_config()
+    return config.get("Logging", "log_file", fallback="qbittorrent.log")
+
+
+def get_clear_log():
+    """Return True if the log should be cleared on startup."""
+    config = get_config()
+    return config.getboolean("Logging", "clear_log", fallback=False)
+
+
+def get_timestamped_log_files():
+    """Return True if log files should be timestamped."""
+    config = get_config()
+    return config.getboolean("Logging", "timestamped_log_files", fallback=False)
