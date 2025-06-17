@@ -43,7 +43,10 @@ def delete_unwanted_files(directory: str):
                 except OSError as e:
                     log_error(f"Failed to delete folder {folder}: {e}")
 
-        unwanted_files = [f for f in files if not f.endswith(EXT_FILTER)]
+        unwanted_files = [
+            f for f in files if not f.endswith(EXT_FILTER) or "sample" in f.lower()
+        ]
+
         for file in unwanted_files:
             file_path = os.path.join(root, file)
             try:
