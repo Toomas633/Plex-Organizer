@@ -142,7 +142,7 @@ git clean -fd
 ## Configuration
 
 All user configurations are handled in the `config.ini` file.
-**NB!! Make sure the host value under qBittorrent is correct. Otherwise it will fail to delete the completed torrent and might fail the python script entirelly.**
+**NB!! Make sure the host value under qBittorrent is correct. Otherwise it will fail to delete the completed torrent if desired.**
 
 ## Usage
 
@@ -170,7 +170,7 @@ Add this command to qBittorrent options under "Run external program on torrent f
 Arguments:
 
 - <start_directory>: The base directory containing the tv and movies subdirectories.
-- <torrent_hash>: **Optional:** The hash of the torrent to be removed (use "test" for testing purposes or to ignore torrent automatic removal). Argument %I in qBittorrent ui.
+- <torrent_hash>: **Optional:** The hash of the torrent to be removed (omit for testing purposes or to ignore torrent automatic removal). Argument %I in qBittorrent ui.
 
 Example:
 
