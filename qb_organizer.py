@@ -11,10 +11,11 @@ from log import log_error, check_clear_log
 from qb import remove_torrent
 import tv
 import movie
-from const import UNWANTED_FOLDERS, INC_FILTER, EXT_FILTER
+from const import UNWANTED_FOLDERS, VIDEO_EXTENSIONS, EXT_FILTER
 from utils import find_folders, is_plex_folder, is_tv_dir, is_main_folder
 from config import ensure_config_exists, get_enable_audio_tagging
 from audio import tag_audio_track_languages
+from subtitles import merge_subtitles_in_directory
 
 START_DIR = sys.argv[1]
 TORRENT_HASH = sys.argv[2] if len(sys.argv) > 2 else None
@@ -35,7 +36,7 @@ def _analyze_video_languages(directory: str):
 
     for root, _, files in os.walk(directory, topdown=False):
         for file in files:
-            if file.endswith(INC_FILTER) and not is_plex_folder(root):
+            if file.endswith(VIDEO_EXTENSIONS) and not is_plex_folder(root):
                 file_path = os.path.join(root, file)
                 tag_audio_track_languages(file_path)
 
@@ -124,7 +125,7 @@ def _rename_files(directory: str):
     """
     for root, _, files in os.walk(directory, topdown=False):
         for file in files:
-            if file.endswith(INC_FILTER) and not is_plex_folder(root):
+            if file.endswith(VIDEO_EXTENSIONS) and not is_plex_folder(root):
                 if is_tv_dir(root):
                     tv.rename(directory, root, file, not is_main_folder(START_DIR))
                 else:
@@ -161,6 +162,7 @@ def main():
             directories = [START_DIR]
 
         for directory in directories:
+            merge_subtitles_in_directory(directory)
             _delete_unwanted_files(directory)
             _delete_empty_directories(directory)
             _rename_files(directory)

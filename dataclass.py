@@ -1,11 +1,11 @@
-"""Audio stream model.
+"""Shared dataclasses used across Plex Organizer modules.
 
-This module defines a small immutable data container used to represent an audio
-stream discovered via ffprobe/FFmpeg inspection.
+These objects are intentionally lightweight containers for metadata extracted from
+media files (via tools like ffprobe/ffmpeg) and for describing planned operations.
 """
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -31,3 +31,16 @@ class AudioStream:
     sample_rate: Optional[int]
     language: Optional[str]
     title: Optional[str]
+
+
+@dataclass(frozen=True)
+class SubtitleMergePlan:
+    """A plan describing which subtitle files to embed into a single video.
+
+    Attributes:
+        video_path: Absolute or relative path to the target video file.
+        subtitle_paths: Paths to subtitle files to be embedded (in input order).
+    """
+
+    video_path: str
+    subtitle_paths: Tuple[str, ...]

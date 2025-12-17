@@ -31,6 +31,9 @@ def ensure_config_exists():
             "enable_audio_tagging": "true",
             "whisper_model_size": "tiny",
         },
+        "Subtitles": {
+            "enable_subtitle_embedding": "true",
+        },
     }
 
     if os.path.exists(CONFIG_PATH):
@@ -149,3 +152,9 @@ def get_enable_audio_tagging():
     """Return True if audio tagging is enabled."""
     config = _get_config()
     return config.getboolean("Audio", "enable_audio_tagging", fallback=True)
+
+
+def get_enable_subtitle_embedding():
+    """Return True if subtitle embedding is enabled."""
+    config = _get_config()
+    return config.getboolean("Subtitles", "enable_subtitle_embedding", fallback=True)

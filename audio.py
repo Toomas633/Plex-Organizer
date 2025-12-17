@@ -13,84 +13,11 @@ from shutil import which
 from subprocess import run, CompletedProcess
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional, Tuple
-from audio_stream import AudioStream
+from const import ISO639_1_TO_2
+from dataclass import AudioStream
 from log import log_error
 from utils import is_plex_folder
 from whisper_detector import WhisperDetector
-
-
-_ISO639_1_TO_2: Dict[str, str] = {
-    "aa": "aar",
-    "ab": "abk",
-    "af": "afr",
-    "ar": "ara",
-    "az": "aze",
-    "be": "bel",
-    "bg": "bul",
-    "bn": "ben",
-    "bs": "bos",
-    "ca": "cat",
-    "cs": "ces",
-    "cy": "cym",
-    "da": "dan",
-    "de": "deu",
-    "el": "ell",
-    "en": "eng",
-    "es": "spa",
-    "et": "est",
-    "eu": "eus",
-    "fa": "fas",
-    "fi": "fin",
-    "fr": "fra",
-    "ga": "gle",
-    "gl": "glg",
-    "gu": "guj",
-    "he": "heb",
-    "hi": "hin",
-    "hr": "hrv",
-    "hu": "hun",
-    "hy": "hye",
-    "id": "ind",
-    "is": "isl",
-    "it": "ita",
-    "ja": "jpn",
-    "jv": "jav",
-    "ka": "kat",
-    "kk": "kaz",
-    "km": "khm",
-    "kn": "kan",
-    "ko": "kor",
-    "lt": "lit",
-    "lv": "lav",
-    "mk": "mkd",
-    "ml": "mal",
-    "mr": "mar",
-    "ms": "msa",
-    "my": "mya",
-    "ne": "nep",
-    "nl": "nld",
-    "no": "nor",
-    "pa": "pan",
-    "pl": "pol",
-    "pt": "por",
-    "ro": "ron",
-    "ru": "rus",
-    "sk": "slk",
-    "sl": "slv",
-    "sq": "sqi",
-    "sr": "srp",
-    "sv": "swe",
-    "sw": "swa",
-    "ta": "tam",
-    "te": "tel",
-    "th": "tha",
-    "tl": "tgl",
-    "tr": "tur",
-    "uk": "ukr",
-    "ur": "urd",
-    "vi": "vie",
-    "zh": "zho",
-}
 
 
 def _which_or_raise(exe: str) -> str:
@@ -510,7 +437,7 @@ def _normalize_language_to_iso639_2(code: Optional[str]) -> Optional[str]:
     if len(code) == 3:
         return code
     if len(code) == 2:
-        return _ISO639_1_TO_2.get(code)
+        return ISO639_1_TO_2.get(code)
     return None
 
 
