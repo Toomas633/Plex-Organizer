@@ -7,6 +7,7 @@
   - [Example Directory Structure](#example-directory-structure)
 - [Requirements](#requirements)
 - [Installation](#installation)
+- [Dev Container (VS Code)](#dev-container-vs-code)
 - [Configuration](#configuration)
 - [Usage](#usage)
   - [Manual running](#manual-running)
@@ -27,7 +28,7 @@ Plex Organizer is a Python-based utility designed to help manage and organize me
 - **Directory Management**: Moves directories to their appropriate locations and deletes empty directories.
 - **Customizable Directories**: Supports separate directories for TV shows and movies.
 - **Handle Plex:** Handles plex directories and optimized versions.
-- **Config file:** Ini file for common configuration options that can be set, disabled or enabled (*beware, some settings might not do anything if already run and info removed from file names, for example turning off quality inclusion and then enabling it*)
+- **Config file:** Ini file for common configuration options that can be set, disabled or enabled (_beware, some settings might not do anything if already run and info removed from file names, for example turning off quality inclusion and then enabling it_)
 
 ### Example Directory Structure
 
@@ -111,17 +112,35 @@ start_directory/
    git clone https://github.com/Toomas633/Plex-Organizer.git
    cd Plex-Organizer
    ```
+
 2. Set up a virtual environment:
 
    ```bash
     python -m venv venv
     source venv/bin/activate
    ```
+
 3. Install dependencies:
 
    ```bash
    pip install -r requirements.txt
    ```
+
+## Dev Container (VS Code)
+
+This repo includes a VS Code Dev Container configuration.
+
+1. Install Docker (Docker Desktop) and VS Code.
+2. In VS Code: `Dev Containers: Reopen in Container`.
+
+The container includes `ffmpeg` (for `faster-whisper`) and will create/initialize `venv/` + install `requirements.txt` on first create.
+It does not auto-run `test.sh`.
+
+For the same quick verification flow as `test.bat` (but for Linux/Dev Container), run:
+
+```bash
+bash ./test.sh
+```
 
 ## Update
 
