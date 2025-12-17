@@ -7,10 +7,12 @@
   - [Example Directory Structure](#example-directory-structure)
 - [Requirements](#requirements)
 - [Installation](#installation)
+- [Update](#update)
 - [Configuration](#configuration)
 - [Usage](#usage)
   - [Manual running](#manual-running)
   - [Automated running](#automated-running)
+- [Dev Container (VS Code)](#dev-container-vs-code)
 - [Contributing](#contributing)
 - [License](#license)
 - [Issues and Feature Requests](#issues-and-feature-requests)
@@ -23,11 +25,18 @@ Plex Organizer is a Python-based utility designed to help manage and organize me
 
 - **Torrent Removal**: Removes torrents from the client after processing.
 - **File Renaming**: Automatically renames media files based on predefined rules for TV shows and movies.
-- **Unwanted File Deletion**: Removes unnecessary files from specified directories.
+- **Unwanted File Deletion**: Removes unnecessary files/folders from specified directories.
 - **Directory Management**: Moves directories to their appropriate locations and deletes empty directories.
 - **Customizable Directories**: Supports separate directories for TV shows and movies.
 - **Handle Plex:** Handles plex directories and optimized versions.
-- **Config file:** Ini file for common configuration options that can be set, disabled or enabled (*beware, some settings might not do anything if already run and info removed from file names, for example turning off quality inclusion and then enabling it*)
+- **Audio language tagging (optional)**: If enabled, detects missing audio track languages and writes ISO 639-2 tags into the container metadata (uses `ffprobe`/`ffmpeg` + `faster-whisper`).
+- **Subtitle embedding (optioanl)**: If enabled, detects subtitles that can and should be embedded to the video file. Also detects subtitle language and type and tags the metadata (uses `ffprobe`/`ffmpeg` + `langdetect`)
+- **Config file:** Ini file for common configuration options that can be set, disabled or enabled (_beware, some settings might not do anything if already run and info removed from file names, for example turning off quality inclusion and then enabling it_)
+
+Notes:
+
+- Cleanup is intentionally aggressive: only video files (`.mkv`, `.mp4`) and in-progress qBittorrent files (`.!qB`) are kept. Subtitle files/folders (e.g. `Subs/`, `Subtitles/`) are removed.
+- If qBittorrent torrent removal is enabled (by providing a torrent hash), the qBittorrent Web API must be reachable and **must not require authentication** (this tool does not log in).
 
 ### Example Directory Structure
 
@@ -102,6 +111,7 @@ start_directory/
 
 - Python 3.x
 - Dependencies listed in `requirements.txt`
+- `ffmpeg`/`ffprobe` on PATH (required only if `enable_audio_tagging = true`)
 
 ## Installation
 
@@ -111,38 +121,53 @@ start_directory/
    git clone https://github.com/Toomas633/Plex-Organizer.git
    cd Plex-Organizer
    ```
-2. Set up a virtual environment:
 
-   ```bash
-    python -m venv venv
-    source venv/bin/activate
-   ```
-3. Install dependencies:
+2. Install dependencies (recommended):
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+bash ./install.sh
+```
+
+Or, to upgrade already-installed dependencies:
+
+```bash
+bash ./install.sh --upgrade
+```
 
 ## Update
 
-To update to the latest version just run update.sh
+To update to the latest version just run update.sh (it will also run `install.sh` afterwards).
 
 ```bash
 ./update.sh
 ```
 
-or
-
-```bash
-git fetch --all
-git reset --hard origin/$(git rev-parse --abbrev-ref HEAD)
-git clean -fd
-```
-
 ## Configuration
 
-All user configurations are handled in the `config.ini` file.
-**NB!! Make sure the host value under qBittorrent is correct. Otherwise it will fail to delete the completed torrent if desired.**
+All user configuration is handled in `config.ini`.
+
+The file is auto-managed on startup:
+
+- Missing required sections/options are added.
+- Unknown options inside known sections are removed.
+
+Key sections:
+
+- `[qBittorrent]`
+  - `host`: Base URL for the Web API (default `http://localhost:8081`). Used for torrent removal.
+- `[Settings]`
+  - `delete_duplicates`: If `true`, deletes source files when the destination already exists.
+  - `include_quality`: If `true`, appends quality like `1080p` to renamed files.
+  - `capitalize`: If `true`, title-cases show/movie names.
+- `[Logging]`
+  - `enable_logging`, `log_file`, `clear_log`, `timestamped_log_files`
+- `[Audio]`
+  - `enable_audio_tagging`: If `true`, runs audio language tagging after moves.
+  - `whisper_model_size`: Whisper model size for `faster-whisper` (default `tiny`).
+- `[Subtitles]`
+  - `enable_subtitle_embedding`: If `true`, runs audio subtitle embedding and tagging before subtitle files are removed.
+
+**NB!!** Make sure the qBittorrent `host` is correct. If you pass a torrent hash and the API call fails, the organizer exits before processing.
 
 ## Usage
 
@@ -178,6 +203,22 @@ Example:
 
 1. Or use **%D** instead of `/mnt/share` to organize the specific torrent folder only on completion
 2. `/mnt/share` will remove the torrent with the given hash and process the directories `/mnt/media/tv` and `/mnt/media/movies`.
+
+## Dev Container (VS Code)
+
+This repo includes a VS Code Dev Container configuration.
+
+1. Install Docker (Docker Desktop) and VS Code.
+2. In VS Code: `Dev Containers: Reopen in Container`.
+
+The container includes `ffmpeg` (for `faster-whisper`) and will create/initialize `venv/` + install `requirements.txt` on first create.
+It does not auto-run `test.sh`.
+
+For the same quick verification flow as `test.bat` (but for Linux/Dev Container), run:
+
+```bash
+bash ./test.sh
+```
 
 ## Contributing
 

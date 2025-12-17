@@ -4,8 +4,8 @@ to standardized formats and directories, including handling Plex folders
 and logging errors or duplicates.
 """
 
-import os
-import re
+from os import path as os_path
+from re import match as re_match
 from log import log_error
 from utils import move_file, create_name, capitalize
 
@@ -25,7 +25,7 @@ def rename(root: str, file: str):
         None
     """
     pattern = r"^(.*?)(?:[.\s])?((?:\d{4}[.\s])+)(?:.*?(\d{3,4}p))?.*"
-    match = re.match(pattern, file)
+    match = re_match(pattern, file)
 
     if not match:
         log_error(f"Filename does not match expected pattern: {file}. Skipping rename.")
@@ -55,12 +55,12 @@ def rename(root: str, file: str):
 
     new_name = create_name(
         name_parts,
-        os.path.splitext(file)[1],
+        os_path.splitext(file)[1],
         match.group(3) if match.group(3) else None,
     )
 
-    old_path = os.path.join(root, file)
-    new_path = os.path.join(root, new_name)
+    old_path = os_path.join(root, file)
+    new_path = os_path.join(root, new_name)
 
     move_file(old_path, new_path, False)
 
@@ -80,7 +80,7 @@ def move(directory: str, root: str, file: str):
     Returns:
         None
     """
-    source_path = os.path.join(root, file)
-    destination_path = os.path.join(directory, file)
+    source_path = os_path.join(root, file)
+    destination_path = os_path.join(directory, file)
 
     move_file(source_path, destination_path)

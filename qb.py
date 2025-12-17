@@ -3,7 +3,7 @@ This module provides functions to interact with the qBittorrent Web API,
 including removing torrents by hash and logging errors if removal fails.
 """
 
-import sys
+from sys import exit as sys_exit
 from requests import post
 from log import log_error
 from config import get_host
@@ -30,4 +30,4 @@ def remove_torrent(torrent_hash: str):
 
     if response.status_code != 200:
         log_error(f"Error deleting torrent '{torrent_hash}': {response.text}")
-        sys.exit(1)
+        sys_exit(1)
