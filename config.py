@@ -30,12 +30,12 @@ def ensure_config_exists():
     }
 
     if os.path.exists(CONFIG_PATH):
-        check_config(default_config)
+        _check_config(default_config)
     else:
-        create_config(default_config)
+        _create_config(default_config)
 
 
-def check_config(default_config: dict):
+def _check_config(default_config: dict):
     """
     Check for missing sections/options in config.ini and add them if needed,
     preserving user edits.
@@ -43,7 +43,7 @@ def check_config(default_config: dict):
     Args:
         default_config (dict): The default configuration with required sections and options.
     """
-    config = get_config()
+    config = _get_config()
     changed = False
     for section, options in default_config.items():
         if not config.has_section(section):
@@ -65,7 +65,7 @@ def check_config(default_config: dict):
             config.write(configfile)
 
 
-def create_config(default_config: dict):
+def _create_config(default_config: dict):
     """
     Create a new config.ini file with all default sections and options.
 
@@ -80,7 +80,7 @@ def create_config(default_config: dict):
             f.write("\n")
 
 
-def get_config():
+def _get_config():
     """Return a ConfigParser object loaded with config.ini."""
     config = configparser.ConfigParser()
     config.read(CONFIG_PATH)
@@ -89,47 +89,47 @@ def get_config():
 
 def get_host():
     """Return the qBittorrent host from the config file."""
-    config = get_config()
+    config = _get_config()
     return config.get("qBittorrent", "host")
 
 
 def get_delete_duplicates():
     """Return True if duplicate deletion is enabled in settings."""
-    config = get_config()
+    config = _get_config()
     return config.getboolean("Settings", "delete_duplicates", fallback=False)
 
 
 def get_include_quality():
     """Return True if quality should be included in settings."""
-    config = get_config()
+    config = _get_config()
     return config.getboolean("Settings", "include_quality", fallback=True)
 
 
 def get_capitalize():
     """Return True if file names should be capitalized."""
-    config = get_config()
+    config = _get_config()
     return config.getboolean("Settings", "capitalize", fallback=True)
 
 
 def get_enable_logging():
     """Return True if logging is enabled."""
-    config = get_config()
+    config = _get_config()
     return config.getboolean("Logging", "enable_logging", fallback=True)
 
 
 def get_log_file():
     """Return the log file path."""
-    config = get_config()
+    config = _get_config()
     return config.get("Logging", "log_file", fallback="qbittorrent.log")
 
 
 def get_clear_log():
     """Return True if the log should be cleared on startup."""
-    config = get_config()
+    config = _get_config()
     return config.getboolean("Logging", "clear_log", fallback=False)
 
 
 def get_timestamped_log_files():
     """Return True if log files should be timestamped."""
-    config = get_config()
+    config = _get_config()
     return config.getboolean("Logging", "timestamped_log_files", fallback=False)

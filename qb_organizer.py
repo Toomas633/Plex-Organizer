@@ -20,7 +20,7 @@ START_DIR = sys.argv[1]
 TORRENT_HASH = sys.argv[2] if len(sys.argv) > 2 else None
 
 
-def delete_unwanted_files(directory: str):
+def _delete_unwanted_files(directory: str):
     """
     Deletes files in the given directory (and subdirectories) that do not match allowed extensions,
     and removes unwanted folders.
@@ -55,7 +55,7 @@ def delete_unwanted_files(directory: str):
                 log_error(f"Failed to delete file {file_path}: {e}")
 
 
-def delete_empty_directories(directory: str):
+def _delete_empty_directories(directory: str):
     """
     Deletes all empty subdirectories within the given directory.
 
@@ -72,7 +72,7 @@ def delete_empty_directories(directory: str):
                 os.rmdir(dir_path)
 
 
-def move_directories(directory: str):
+def _move_directories(directory: str):
     """
     Moves video files from subdirectories to the main directory using the appropriate handler.
 
@@ -92,7 +92,7 @@ def move_directories(directory: str):
                     movie.move(directory, root, file)
 
 
-def rename_files(directory: str):
+def _rename_files(directory: str):
     """
     Renames video files in the given directory using the appropriate handler.
 
@@ -141,11 +141,11 @@ def main():
             directories = [START_DIR]
 
         for directory in directories:
-            delete_unwanted_files(directory)
-            delete_empty_directories(directory)
-            rename_files(directory)
-            move_directories(directory)
-            delete_empty_directories(directory)
+            _delete_unwanted_files(directory)
+            _delete_empty_directories(directory)
+            _rename_files(directory)
+            _move_directories(directory)
+            _delete_empty_directories(directory)
     except (OSError, ValueError) as e:
         log_error(f"Error occured: {e}")
 

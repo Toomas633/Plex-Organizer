@@ -16,7 +16,7 @@ from config import (
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-def log_message(level: str, message: str):
+def _log_message(level: str, message: str):
     """
     Writes a log message with a specified level to the log file.
 
@@ -52,7 +52,7 @@ def log_error(message: str):
     Returns:
         None
     """
-    log_message("ERROR", message)
+    _log_message("ERROR", message)
 
 
 def log_duplicate(message: str):
@@ -65,7 +65,7 @@ def log_duplicate(message: str):
     Returns:
         None
     """
-    log_message("DUPLICATE", message)
+    _log_message("DUPLICATE", message)
 
 
 def check_clear_log():
