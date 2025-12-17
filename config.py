@@ -27,6 +27,10 @@ def ensure_config_exists():
             "clear_log": "false",
             "timestamped_log_files": "false",
         },
+        "Audio": {
+            "enable_audio_tagging": "true",
+            "whisper_model_size": "tiny",
+        },
     }
 
     if os.path.exists(CONFIG_PATH):
@@ -133,3 +137,15 @@ def get_timestamped_log_files():
     """Return True if log files should be timestamped."""
     config = _get_config()
     return config.getboolean("Logging", "timestamped_log_files", fallback=False)
+
+
+def get_whisper_model_size():
+    """Return the Whisper model size from the config file."""
+    config = _get_config()
+    return config.get("Audio", "whisper_model_size", fallback="tiny")
+
+
+def get_enable_audio_tagging():
+    """Return True if audio tagging is enabled."""
+    config = _get_config()
+    return config.getboolean("Audio", "enable_audio_tagging", fallback=True)

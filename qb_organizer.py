@@ -13,11 +13,31 @@ import tv
 import movie
 from const import UNWANTED_FOLDERS, INC_FILTER, EXT_FILTER
 from utils import find_folders, is_plex_folder, is_tv_dir, is_main_folder
-from config import ensure_config_exists
-
+from config import ensure_config_exists, get_enable_audio_tagging
+from audio import tag_audio_track_languages
 
 START_DIR = sys.argv[1]
 TORRENT_HASH = sys.argv[2] if len(sys.argv) > 2 else None
+
+
+def _analyze_video_languages(directory: str):
+    """
+    Analyzes and tags audio track languages for video files in the given directory.
+
+    Args:
+        directory (str): The directory to process.
+
+    Returns:
+        None
+    """
+    if not get_enable_audio_tagging():
+        return
+
+    for root, _, files in os.walk(directory, topdown=False):
+        for file in files:
+            if file.endswith(INC_FILTER) and not is_plex_folder(root):
+                file_path = os.path.join(root, file)
+                tag_audio_track_languages(file_path)
 
 
 def _delete_unwanted_files(directory: str):
@@ -146,6 +166,7 @@ def main():
             _rename_files(directory)
             _move_directories(directory)
             _delete_empty_directories(directory)
+            _analyze_video_languages(directory)
     except (OSError, ValueError) as e:
         log_error(f"Error occured: {e}")
 

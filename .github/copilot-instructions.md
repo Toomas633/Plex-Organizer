@@ -2,14 +2,22 @@
 
 ## Big picture
 
-- Entry point is `qb_organizer.py`: orchestrates cleanup → rename → move, and optionally removes a completed torrent via qBittorrent.
+- Entry point is `qb_organizer.py`: orchestrates cleanup → rename → move → cleanup → (optional) audio-language tagging, and optionally removes a completed torrent via qBittorrent.
 - Media-specific logic lives in `tv.py` and `movie.py`:
-  - TV rename format: `Show Name SxxExx [Quality].ext`, then move into `tv/<Show>/Season <xx>/`.
-  - Movie rename format: `Name (Year) [Quality].ext`, then move into the target movies folder.
+  - TV rename format: `Show Name SxxExx Quality.ext` (quality included only when `[Settings] include_quality = true`), then move into `tv/<Show>/Season <xx>/`.
+  - Movie rename format: `Name (Year) Quality.ext` (quality included only when `[Settings] include_quality = true`), then move into the target movies folder.
 - File/dir filtering and shared behaviors:
   - Constants in `const.py` (`INC_FILTER`, `EXT_FILTER`, `UNWANTED_FOLDERS`).
   - Helpers in `utils.py` (duplicate handling, capitalization rules, "Plex Versions" detection, start-dir mode detection).
   - Logging in `log.py` (errors + duplicates) controlled by `config.ini`.
+
+## Cleanup behavior (important)
+
+- Cleanup is intentionally aggressive:
+  - Files are kept only if they end with `EXT_FILTER` (currently `.mkv`, `.mp4`, and `.!qB`). Anything else (e.g., `.srt`, `.nfo`, `.txt`) is deleted.
+  - Any file with `sample` in its name is deleted.
+  - Folders matching `UNWANTED_FOLDERS` are deleted recursively (includes `Subs`/`Subtitles`, `Extras`, `Sample(s)`, artwork/posters, and `Plex Versions`).
+- Plex-managed content must not be modified: always skip paths where `utils.is_plex_folder()` is true.
 
 ## How the organizer decides what to process
 
@@ -24,9 +32,19 @@
 
 - `config.ini` is mandatory and auto-managed by `config.ensure_config_exists()`.
   - Missing required options are added.
-  - Extra/unknown options in known sections are removed by `check_config()`; don’t invent new keys without updating `config.py`.
+  - Extra/unknown options in known sections are removed during startup config validation; don’t invent new keys without updating `config.py`.
 - qBittorrent integration (`qb.py`): calls `POST {host}/api/v2/torrents/delete` with `deleteFiles=false`.
   - Host comes from `[qBittorrent] host` (default `http://localhost:8081`).
+  - Authentication is not implemented; if the qBittorrent Web API requires login, torrent removal will fail and the script exits.
+
+## Audio language tagging
+
+- Controlled by `[Audio] enable_audio_tagging` (default `true`).
+- Implemented in `audio.py` and `whisper_detector.py`:
+  - Uses `ffprobe` to enumerate audio streams.
+  - For streams with missing/unknown `language` tags, extracts short WAV samples with `ffmpeg` and runs `faster-whisper` to infer spoken language.
+  - Writes ISO 639-2 (`eng`, `spa`, etc.) back into the container via an `ffmpeg -c copy` remux (in-place replace).
+- This runs after move/rename; it should still skip Plex folders and should log errors rather than raise.
 
 ## Developer workflows (Windows-first repo)
 
