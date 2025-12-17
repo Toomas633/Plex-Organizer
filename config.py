@@ -2,10 +2,10 @@
 This module provides functions to access settings from the config.ini file.
 """
 
-import os
-import configparser
+from os import path as os_path
+from configparser import ConfigParser
 
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.ini")
+CONFIG_PATH = os_path.join(os_path.dirname(__file__), "config.ini")
 
 
 def ensure_config_exists():
@@ -36,7 +36,7 @@ def ensure_config_exists():
         },
     }
 
-    if os.path.exists(CONFIG_PATH):
+    if os_path.exists(CONFIG_PATH):
         _check_config(default_config)
     else:
         _create_config(default_config)
@@ -89,7 +89,7 @@ def _create_config(default_config: dict):
 
 def _get_config():
     """Return a ConfigParser object loaded with config.ini."""
-    config = configparser.ConfigParser()
+    config = ConfigParser()
     config.read(CONFIG_PATH)
     return config
 

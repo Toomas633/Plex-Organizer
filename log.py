@@ -4,7 +4,7 @@ Logging utilities for Plex Organizer.
 Provides functions to log messages, errors, and duplicate file events to a log file.
 """
 
-import os
+from os import path as os_path
 from datetime import datetime
 from config import (
     get_clear_log,
@@ -13,7 +13,7 @@ from config import (
     get_timestamped_log_files,
 )
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR = os_path.dirname(os_path.abspath(__file__))
 
 
 def _log_message(level: str, message: str):
@@ -31,11 +31,11 @@ def _log_message(level: str, message: str):
         log_filename = get_log_file()
 
         if get_timestamped_log_files():
-            base, ext = os.path.splitext(log_filename)
+            base, ext = os_path.splitext(log_filename)
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             log_filename = f"{base}.{timestamp}{ext}"
 
-        log_path = os.path.join(SCRIPT_DIR, log_filename)
+        log_path = os_path.join(SCRIPT_DIR, log_filename)
         with open(log_path, "a", encoding="utf-8") as log_file_obj:
             log_file_obj.write(
                 f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - [{level}] - {message}\n"
@@ -77,6 +77,6 @@ def check_clear_log():
     """
     if get_clear_log() and get_enable_logging() and not get_timestamped_log_files():
         with open(
-            os.path.join(SCRIPT_DIR, get_log_file()), "w", encoding="utf-8"
+            os_path.join(SCRIPT_DIR, get_log_file()), "w", encoding="utf-8"
         ) as log_file:
             log_file.truncate(0)

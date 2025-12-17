@@ -1,6 +1,6 @@
 """Utility functions for file operations in Plex Organizer."""
 
-import os
+from os import path as os_path, sep as os_sep, listdir, remove, rename
 from log import log_error, log_duplicate
 from config import get_delete_duplicates, get_include_quality, get_capitalize
 
@@ -15,7 +15,7 @@ def is_plex_folder(path: str):
     Returns:
         bool: True if the path is a Plex Versions folder, False otherwise.
     """
-    return "Plex Versions" in path.split(os.sep)
+    return "Plex Versions" in path.split(os_sep)
 
 
 def find_folders(directory: str):
@@ -30,9 +30,9 @@ def find_folders(directory: str):
     """
     try:
         return [
-            os.path.join(directory, folder)
-            for folder in os.listdir(directory)
-            if os.path.isdir(os.path.join(directory, folder))
+            os_path.join(directory, folder)
+            for folder in listdir(directory)
+            if os_path.isdir(os_path.join(directory, folder))
         ]
     except OSError as e:
         log_error(f"Error finding folders in directory {directory}: {e}")
@@ -51,11 +51,11 @@ def move_file(source_path: str, destination_path: str, move=True):
     if source_path == destination_path:
         return
 
-    if not os.path.exists(source_path):
+    if not os_path.exists(source_path):
         log_error(f"File not found: {source_path}.")
         return
 
-    if os.path.exists(destination_path):
+    if os_path.exists(destination_path):
         log_duplicate(
             f"File already exists: {destination_path}. "
             f"Skipping {'move' if move else 'rename'} for {source_path}."
@@ -63,14 +63,14 @@ def move_file(source_path: str, destination_path: str, move=True):
 
         if get_delete_duplicates():
             try:
-                os.remove(source_path)
+                remove(source_path)
             except OSError as e:
                 log_error(f"Failed to delete duplicate {source_path}: {e}")
 
         return
 
     try:
-        os.rename(source_path, destination_path)
+        rename(source_path, destination_path)
     except OSError as e:
         log_error(
             f"Failed to {'move' if move else 'rename'} {source_path} to {destination_path}: {e}"
@@ -103,7 +103,7 @@ def is_tv_dir(root: str):
     Returns:
         bool: True if the directory is in a TV show directory, False otherwise.
     """
-    return "tv" in root.split(os.sep)
+    return "tv" in root.split(os_sep)
 
 
 def is_main_folder(start: str):
@@ -118,7 +118,7 @@ def is_main_folder(start: str):
     """
     folders = []
     for part in find_folders(start):
-        folders.append(part.split(os.sep)[-1])
+        folders.append(part.split(os_sep)[-1])
     return "movies" in folders or "tv" in folders
 
 

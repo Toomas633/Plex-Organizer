@@ -8,7 +8,7 @@ written back into the container as ISO 639-2 language tags.
 
 from __future__ import annotations
 from json import JSONDecodeError, loads
-from os import path, stat, replace, utime
+from os import path as os_path, stat, replace, utime
 from shutil import which
 from subprocess import run, CompletedProcess
 from tempfile import TemporaryDirectory
@@ -110,7 +110,7 @@ def _probe_audio_streams(video_path: str) -> List[AudioStream]:
         FileNotFoundError: If video_path does not exist.
         RuntimeError: If ffprobe is missing or fails.
     """
-    if not path.isfile(video_path):
+    if not os_path.isfile(video_path):
         raise FileNotFoundError(video_path)
 
     _which_or_raise("ffprobe")
@@ -145,7 +145,7 @@ def _probe_duration_seconds(video_path: str) -> Optional[float]:
     Returns:
         Duration in seconds, or None if unavailable/ffprobe fails.
     """
-    if not path.isfile(video_path):
+    if not os_path.isfile(video_path):
         raise FileNotFoundError(video_path)
 
     _which_or_raise("ffprobe")
@@ -265,7 +265,7 @@ def _sample_track_languages(
     """
     samples: List[Tuple[Optional[str], float]] = []
     detector = WhisperDetector(cpu_threads=2)
-    wav_path = path.join(tmpdir, f"a{stream.audio_index}.wav")
+    wav_path = os_path.join(tmpdir, f"a{stream.audio_index}.wav")
 
     for offset in offsets:
         _extract_audio_sample(
@@ -382,7 +382,7 @@ def _apply_language_metadata(
 
     _which_or_raise("ffmpeg")
     in_stat = stat(video_path)
-    base, ext = path.splitext(video_path)
+    base, ext = os_path.splitext(video_path)
     tmp_out = f"{base}.langtag.tmp{ext}"
 
     cmd: List[str] = [

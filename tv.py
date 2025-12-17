@@ -4,8 +4,8 @@ to standardized formats and directories, including handling Plex folders
 and logging errors or duplicates.
 """
 
-import os
-import re
+from os import path as os_path, makedirs
+from re import compile, IGNORECASE
 from utils import move_file, create_name, capitalize
 
 
@@ -26,12 +26,12 @@ def rename(directory: str, root: str, file: str, take_name_from_root=False):
         None
     """
     if not take_name_from_root:
-        show_name = capitalize(os.path.relpath(root, directory).split(os.sep)[0])
+        show_name = capitalize(os_path.relpath(root, directory).split(os_path.sep)[0])
     else:
-        show_name = capitalize(directory.split(os.sep)[-1])
+        show_name = capitalize(directory.split(os_path.sep)[-1])
 
-    season_episode_pattern = re.compile(r"[. ]S(\d{2})[ .]?E(\d{2})", re.IGNORECASE)
-    quality_pattern = re.compile(r"[. ](\d{3,4}p)", re.IGNORECASE)
+    season_episode_pattern = compile(r"[. ]S(\d{2})[ .]?E(\d{2})", IGNORECASE)
+    quality_pattern = compile(r"[. ](\d{3,4}p)", IGNORECASE)
 
     season_episode_match = season_episode_pattern.search(file)
     if season_episode_match:
@@ -45,12 +45,12 @@ def rename(directory: str, root: str, file: str, take_name_from_root=False):
 
     new_name = create_name(
         [show_name, season_episode],
-        os.path.splitext(file)[1],
+        os_path.splitext(file)[1],
         quality_match.group(1) if quality_match else None,
     )
 
-    old_path = os.path.join(root, file)
-    new_path = os.path.join(root, new_name)
+    old_path = os_path.join(root, file)
+    new_path = os_path.join(root, new_name)
 
     move_file(old_path, new_path, False)
 
@@ -70,23 +70,23 @@ def move(directory: str, root: str, file: str, move_to_root=False):
     Returns:
         None
     """
-    season_pattern = re.compile(r"S(\d{2})", re.IGNORECASE)
+    season_pattern = compile(r"S(\d{2})", IGNORECASE)
     season_match = season_pattern.search(file)
     season = int(season_match.group(1)) if season_match else 0
 
     if not move_to_root:
-        show_name = os.path.relpath(root, directory).split(os.sep)[0]
-        correct_path = os.path.join(directory, show_name, f"Season {season:02d}")
+        show_name = os_path.relpath(root, directory).split(os_path.sep)[0]
+        correct_path = os_path.join(directory, show_name, f"Season {season:02d}")
     else:
-        correct_path = os.path.join(directory, f"Season {season:02d}")
+        correct_path = os_path.join(directory, f"Season {season:02d}")
 
-    old_path = os.path.join(root, file)
-    new_path = os.path.join(correct_path, file)
+    old_path = os_path.join(root, file)
+    new_path = os_path.join(correct_path, file)
 
     if root == correct_path:
         return
 
-    if not os.path.exists(correct_path):
-        os.makedirs(correct_path)
+    if not os_path.exists(correct_path):
+        makedirs(correct_path)
 
     move_file(old_path, new_path)

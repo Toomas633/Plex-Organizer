@@ -4,9 +4,9 @@ to appropriate directories for TV and movies. It also handles unwanted files, em
 and interacts with qBittorrent and Plex folder structures.
 """
 
-import os
-import sys
-import shutil
+from os import walk, remove, listdir, rmdir, path as os_path, sep as os_sep
+from sys import argv, exit as sys_exit
+from shutil import rmtree
 from log import log_error, check_clear_log
 from qb import remove_torrent
 import tv
@@ -17,8 +17,8 @@ from config import ensure_config_exists, get_enable_audio_tagging
 from audio import tag_audio_track_languages
 from subtitles import merge_subtitles_in_directory
 
-START_DIR = sys.argv[1]
-TORRENT_HASH = sys.argv[2] if len(sys.argv) > 2 else None
+START_DIR = argv[1]
+TORRENT_HASH = argv[2] if len(argv) > 2 else None
 
 
 def _analyze_video_languages(directory: str):
@@ -34,10 +34,10 @@ def _analyze_video_languages(directory: str):
     if not get_enable_audio_tagging():
         return
 
-    for root, _, files in os.walk(directory, topdown=False):
+    for root, _, files in walk(directory, topdown=False):
         for file in files:
             if file.endswith(VIDEO_EXTENSIONS) and not is_plex_folder(root):
-                file_path = os.path.join(root, file)
+                file_path = os_path.join(root, file)
                 tag_audio_track_languages(file_path)
 
 
@@ -52,15 +52,15 @@ def _delete_unwanted_files(directory: str):
     Returns:
         None
     """
-    for root, _, files in os.walk(directory, topdown=False):
+    for root, _, files in walk(directory, topdown=False):
         for folder in find_folders(root):
-            folder_parts = {os.path.normcase(part) for part in folder.split(os.sep)}
+            folder_parts = {os_path.normcase(part) for part in folder.split(os_sep)}
             if any(
-                os.path.normcase(unwanted) in folder_parts
+                os_path.normcase(unwanted) in folder_parts
                 for unwanted in UNWANTED_FOLDERS
             ):
                 try:
-                    shutil.rmtree(folder)
+                    rmtree(folder)
                 except OSError as e:
                     log_error(f"Failed to delete folder {folder}: {e}")
 
@@ -69,9 +69,9 @@ def _delete_unwanted_files(directory: str):
         ]
 
         for file in unwanted_files:
-            file_path = os.path.join(root, file)
+            file_path = os_path.join(root, file)
             try:
-                os.remove(file_path)
+                remove(file_path)
             except OSError as e:
                 log_error(f"Failed to delete file {file_path}: {e}")
 
@@ -86,11 +86,11 @@ def _delete_empty_directories(directory: str):
     Returns:
         None
     """
-    for root, dirs, _ in os.walk(directory, topdown=False):
+    for root, dirs, _ in walk(directory, topdown=False):
         for dir_name in dirs:
-            dir_path = os.path.join(root, dir_name)
-            if not os.listdir(dir_path):
-                os.rmdir(dir_path)
+            dir_path = os_path.join(root, dir_name)
+            if not listdir(dir_path):
+                rmdir(dir_path)
 
 
 def _move_directories(directory: str):
@@ -104,7 +104,7 @@ def _move_directories(directory: str):
         None
     """
     inc_filter = (".mkv", ".mp4")
-    for root, _, files in os.walk(directory, topdown=False):
+    for root, _, files in walk(directory, topdown=False):
         for file in files:
             if file.endswith(inc_filter) and not is_plex_folder(root):
                 if is_tv_dir(root):
@@ -123,7 +123,7 @@ def _rename_files(directory: str):
     Returns:
         None
     """
-    for root, _, files in os.walk(directory, topdown=False):
+    for root, _, files in walk(directory, topdown=False):
         for file in files:
             if file.endswith(VIDEO_EXTENSIONS) and not is_plex_folder(root):
                 if is_tv_dir(root):
@@ -143,10 +143,10 @@ def main():
 
     ensure_config_exists()
     check_clear_log()
-    if len(sys.argv) < 2:
+    if len(argv) < 2:
         log_error("Error: No directory provided.")
         log_error("Usage: qb_delete.py <dir> <optional_torrent_hash>")
-        sys.exit(1)
+        sys_exit(1)
 
     try:
         if TORRENT_HASH:
@@ -155,8 +155,8 @@ def main():
         directories = []
         if is_main_folder(START_DIR):
             directories = [
-                os.path.join(START_DIR, "tv"),
-                os.path.join(START_DIR, "movies"),
+                os_path.join(START_DIR, "tv"),
+                os_path.join(START_DIR, "movies"),
             ]
         else:
             directories = [START_DIR]
