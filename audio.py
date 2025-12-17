@@ -13,6 +13,7 @@ from shutil import which
 from subprocess import run, CompletedProcess
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional, Tuple
+from config import get_cpu_threads
 from const import ISO639_1_TO_2
 from dataclass import AudioStream
 from log import log_error
@@ -264,7 +265,7 @@ def _sample_track_languages(
         List of (iso639_2_language_or_none, confidence) tuples per sample.
     """
     samples: List[Tuple[Optional[str], float]] = []
-    detector = WhisperDetector(cpu_threads=2)
+    detector = WhisperDetector(cpu_threads=get_cpu_threads())
     wav_path = os_path.join(tmpdir, f"a{stream.audio_index}.wav")
 
     for offset in offsets:

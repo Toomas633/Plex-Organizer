@@ -20,6 +20,7 @@ def ensure_config_exists():
             "include_quality": "true",
             "clear_log": "false",
             "capitalize": "true",
+            "cpu_threads": "2",
         },
         "Logging": {
             "enable_logging": "true",
@@ -158,3 +159,9 @@ def get_enable_subtitle_embedding():
     """Return True if subtitle embedding is enabled."""
     config = _get_config()
     return config.getboolean("Subtitles", "enable_subtitle_embedding", fallback=True)
+
+
+def get_cpu_threads():
+    """Return the number of CPU threads to use from settings."""
+    config = _get_config()
+    return config.getint("Settings", "cpu_threads", fallback=2)
