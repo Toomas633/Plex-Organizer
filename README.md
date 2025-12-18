@@ -194,15 +194,16 @@ Add this command to qBittorrent options under "Run external program on torrent f
 
 Arguments:
 
-- <start_directory>: The base directory containing the tv and movies subdirectories.
-- <torrent_hash>: **Optional:** The hash of the torrent to be removed (omit for testing purposes or to ignore torrent automatic removal). Argument %I in qBittorrent ui.
+- `<start_directory>`: The base directory containing the tv and movies subdirectories or %D in qBittorrent ui.
+- `<torrent_hash>`: **Optional:** The hash of the torrent to be removed (omit for testing purposes or to ignore torrent automatic removal). Argument %I in qBittorrent ui.
+
+**Be sure to put arguments between "%D" to avoid whitespace cuttofs**
 
 Example:
 
 ![Example config image](.github/images/image.png)
 
-1. Or use **%D** instead of `/mnt/share` to organize the specific torrent folder only on completion
-2. `/mnt/share` will remove the torrent with the given hash and process the directories `/mnt/media/tv` and `/mnt/media/movies`.
+For performance reasons it is recommended that **%D** is used instead of entire directory like `/mnt/share`. This way only the specific folder will be organized not entire library on each call. Putting your root directory like `/mnt/share` will remove the torrent with the given hash and process the directories `/mnt/media/tv` and `/mnt/media/movies`.
 
 ## Dev Container (VS Code)
 

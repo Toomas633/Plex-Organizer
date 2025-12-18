@@ -3,7 +3,7 @@ set -euo pipefail
 
 SOURCE_DIR="testData"
 TARGET_DIR="testEnv"
-PYTHON_SCRIPT="qb_organizer.py"
+PYTHON_SCRIPT="plex_organizer.py"
 VENV_DIR="venv"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,6 +16,12 @@ copy_test_data() {
   local target_path="$2"
 
   mkdir -p "$target_path"
+  
+  if command -v parallel >/dev/null 2>&1; then
+    find "$source_path" -mindepth 1 -print0 | \
+      parallel -0 -j"$(nproc)" cp -a --parents {} "$target_path" 2>/dev/null
+    return 0
+  fi
 
   if command -v rsync >/dev/null 2>&1; then
     if rsync -a --delete "$source_path/." "$target_path/"; then
@@ -29,6 +35,7 @@ copy_test_data() {
     return 0
   fi
 
+  # Fallback to single-threaded cp
   rm -rf "$target_path"
   mkdir -p "$target_path"
   cp -a "$source_path/." "$target_path/"

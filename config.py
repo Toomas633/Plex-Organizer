@@ -18,13 +18,12 @@ def ensure_config_exists():
         "Settings": {
             "delete_duplicates": "false",
             "include_quality": "true",
-            "clear_log": "false",
             "capitalize": "true",
             "cpu_threads": "2",
         },
         "Logging": {
             "enable_logging": "true",
-            "log_file": "qbittorrent.log",
+            "log_file": "plex-organizer.log",
             "clear_log": "false",
             "timestamped_log_files": "false",
         },
@@ -128,7 +127,7 @@ def get_enable_logging():
 def get_log_file():
     """Return the log file path."""
     config = _get_config()
-    return config.get("Logging", "log_file", fallback="qbittorrent.log")
+    return config.get("Logging", "log_file", fallback="plex-organizer.log")
 
 
 def get_clear_log():

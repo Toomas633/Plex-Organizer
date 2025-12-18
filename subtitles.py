@@ -782,15 +782,15 @@ def _create_temp_output_path(video_path: str) -> str:
 
 
 def _build_subtitle_embed_cmd(
-    *,
     ffmpeg: str,
     video_path: str,
     subtitle_paths: Sequence[str],
     tmp_path: str,
     is_mp4: bool,
-    existing_embedded_sub_count: int,
 ) -> List[str]:
     """Build an ffmpeg command to embed subtitle inputs into a container."""
+    existing_embedded_sub_count = _probe_embedded_subtitle_stream_count(video_path)
+
     cmd: List[str] = [
         ffmpeg,
         "-y",
@@ -824,9 +824,8 @@ def _build_subtitle_embed_cmd(
     )
 
     if is_mp4:
-        start = existing_embedded_sub_count
         end = existing_embedded_sub_count + len(subtitle_paths)
-        for out_s_index in range(start, end):
+        for out_s_index in range(existing_embedded_sub_count, end):
             cmd.extend([f"-c:s:{out_s_index}", "mov_text"])
 
     for i, sub_path in enumerate(subtitle_paths):
@@ -875,24 +874,12 @@ def _embed_subtitles(plan: SubtitleMergePlan) -> None:
     if not ffmpeg:
         return
 
-    try:
-        existing_embedded_sub_count = _probe_embedded_subtitle_stream_count(
-            plan.video_path
-        )
-    except RuntimeError:
-        return
-
     st = stat(plan.video_path)
     tmp_path = _create_temp_output_path(plan.video_path)
 
     try:
         cmd = _build_subtitle_embed_cmd(
-            ffmpeg=ffmpeg,
-            video_path=plan.video_path,
-            subtitle_paths=existing_subs,
-            tmp_path=tmp_path,
-            is_mp4=is_mp4,
-            existing_embedded_sub_count=existing_embedded_sub_count,
+            ffmpeg, plan.video_path, existing_subs, tmp_path, is_mp4
         )
         proc = _run(cmd)
         if proc.returncode != 0:
@@ -908,6 +895,11 @@ def _embed_subtitles(plan: SubtitleMergePlan) -> None:
         utime(plan.video_path, ns=(st.st_atime_ns, st.st_mtime_ns))
 
         _delete_paths_best_effort(existing_subs)
+    except RuntimeError as e:
+        log_error(
+            f"Skipping subtitle embedding for '{plan.video_path}' due to ffprobe failure. {e}"
+        )
+        return
     finally:
         try:
             if os_path.exists(tmp_path):

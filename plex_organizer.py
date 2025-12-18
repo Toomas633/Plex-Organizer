@@ -12,7 +12,12 @@ from qb import remove_torrent
 import tv
 import movie
 from const import UNWANTED_FOLDERS, VIDEO_EXTENSIONS, EXT_FILTER
-from utils import find_folders, is_plex_folder, is_tv_dir, is_main_folder
+from utils import (
+    find_folders,
+    is_plex_folder,
+    is_tv_dir,
+    is_main_folder,
+)
 from config import ensure_config_exists, get_enable_audio_tagging
 from audio import tag_audio_track_languages
 from subtitles import merge_subtitles_in_directory
@@ -78,7 +83,8 @@ def _delete_unwanted_directories(root: str):
         None
     """
     for folder in find_folders(root):
-        folder_parts = {os_path.normcase(part) for part in folder.split(os_sep)}
+        folder_parts = {os_path.normcase(part)
+                        for part in folder.split(os_sep)}
         if any(
             os_path.normcase(unwanted) in folder_parts for unwanted in UNWANTED_FOLDERS
         ):
@@ -115,12 +121,12 @@ def _move_directories(directory: str):
     Returns:
         None
     """
-    inc_filter = (".mkv", ".mp4")
     for root, _, files in walk(directory, topdown=False):
         for file in files:
-            if file.endswith(inc_filter) and not is_plex_folder(root):
+            if file.endswith(VIDEO_EXTENSIONS) and not is_plex_folder(root):
                 if is_tv_dir(root):
-                    tv.move(directory, root, file, not is_main_folder(START_DIR))
+                    tv.move(directory, root, file,
+                            not is_main_folder(START_DIR))
                 else:
                     movie.move(directory, root, file)
 
@@ -139,7 +145,8 @@ def _rename_files(directory: str):
         for file in files:
             if file.endswith(VIDEO_EXTENSIONS) and not is_plex_folder(root):
                 if is_tv_dir(root):
-                    tv.rename(directory, root, file, not is_main_folder(START_DIR))
+                    tv.rename(directory, root, file,
+                              not is_main_folder(START_DIR))
                 else:
                     movie.rename(root, file)
 
@@ -175,12 +182,11 @@ def main():
 
         for directory in directories:
             merge_subtitles_in_directory(directory)
+            _analyze_video_languages(directory)
             _delete_unwanted_files(directory)
-            _delete_empty_directories(directory)
             _rename_files(directory)
             _move_directories(directory)
             _delete_empty_directories(directory)
-            _analyze_video_languages(directory)
     except (OSError, ValueError) as e:
         log_error(f"Error occured: {e}")
 

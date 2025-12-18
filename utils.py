@@ -3,6 +3,7 @@
 from os import path as os_path, sep as os_sep, listdir, remove, rename
 from log import log_error, log_duplicate
 from config import get_delete_duplicates, get_include_quality, get_capitalize
+from shutil import move
 
 
 def is_plex_folder(path: str):
@@ -39,14 +40,14 @@ def find_folders(directory: str):
         return []
 
 
-def move_file(source_path: str, destination_path: str, move=True):
+def move_file(source_path: str, destination_path: str, is_move=True):
     """
     Move or rename a file, handling duplicates and errors.
 
     Args:
         source_path (str): The path to the source file.
         destination_path (str): The path to move or rename the file to.
-        move (bool, optional): If True, move the file; if False, rename. Defaults to True.
+        is_move (bool, optional): If True, move the file; if False, rename. Defaults to True.
     """
     if source_path == destination_path:
         return
@@ -58,7 +59,7 @@ def move_file(source_path: str, destination_path: str, move=True):
     if os_path.exists(destination_path):
         log_duplicate(
             f"File already exists: {destination_path}. "
-            f"Skipping {'move' if move else 'rename'} for {source_path}."
+            f"Skipping {'move' if is_move else 'rename'} for {source_path}."
         )
 
         if get_delete_duplicates():
@@ -70,10 +71,10 @@ def move_file(source_path: str, destination_path: str, move=True):
         return
 
     try:
-        rename(source_path, destination_path)
+        move(source_path, destination_path)
     except OSError as e:
         log_error(
-            f"Failed to {'move' if move else 'rename'} {source_path} to {destination_path}: {e}"
+            f"Failed to {'move' if is_move else 'rename'} {source_path} to {destination_path}: {e}"
         )
 
 

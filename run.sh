@@ -16,4 +16,4 @@ fi
 
 source $SCRIPT_DIR/venv/bin/activate
 
-python3 $SCRIPT_DIR/qb_organizer.py $start_dir $torrent_hash
+python3 "$SCRIPT_DIR/plex_organizer.py" "$start_dir" "$torrent_hash"
