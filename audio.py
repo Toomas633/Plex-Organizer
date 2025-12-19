@@ -7,7 +7,7 @@ written back into the container as ISO 639-2 language tags.
 """
 
 from __future__ import annotations
-from json import JSONDecodeError, loads
+from json import loads
 from os import path as os_path, stat, replace, utime
 from shutil import which
 from subprocess import run, CompletedProcess
@@ -172,7 +172,7 @@ def _probe_duration_seconds(video_path: str) -> Optional[float]:
         if dur is None:
             return None
         return float(dur)
-    except (ValueError, TypeError, JSONDecodeError):
+    except (ValueError, TypeError):
         return None
 
 
@@ -524,6 +524,6 @@ def tag_audio_track_languages(video_path: str) -> None:
         detections = _detect_languages_for_streams(video_path, streams)
 
         _apply_language_metadata(video_path, detections)
-    except (FileNotFoundError, RuntimeError, OSError, JSONDecodeError, ValueError) as e:
+    except (RuntimeError, OSError, ValueError) as e:
         log_error(str(e))
         return

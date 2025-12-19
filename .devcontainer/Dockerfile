@@ -10,4 +10,5 @@ RUN apt-get update \
     python3-venv \
     python-is-python3 \
     ffmpeg \
+    openjdk-25-jre-headless \
     && rm -rf /var/lib/apt/lists/*

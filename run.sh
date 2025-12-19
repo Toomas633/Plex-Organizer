@@ -4,12 +4,12 @@ SCRIPT_DIR="$(dirname "$0")"
 torrent_hash="$2"
 start_dir="$1"
 
-if [ -z "$start_dir" ]; then
+if [[ -z "$start_dir" ]]; then
     echo "Usage: $0 <start_dir> <optional_torrent_hash>"
     exit 1
 fi
 
-if [ ! -f "$SCRIPT_DIR/venv/bin/activate" ]; then
+if [[ ! -f "$SCRIPT_DIR/venv/bin/activate" ]]; then
     echo "Virtual environment not found in $SCRIPT_DIR/venv"
     exit 1
 fi

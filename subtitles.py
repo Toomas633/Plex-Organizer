@@ -15,7 +15,7 @@ from re import sub as re_sub, MULTILINE, search, findall
 from shutil import which
 from subprocess import CompletedProcess, run
 from tempfile import NamedTemporaryFile
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Tuple, Any, Dict, List, Optional, Sequence
 from langdetect import DetectorFactory, detect_langs
 from langdetect.lang_detect_exception import LangDetectException
 from config import get_enable_subtitle_embedding
@@ -120,7 +120,7 @@ def _clean_subtitle_text_for_langdetect(text: str) -> str:
     text = re_sub(r"^WEBVTT\s*\n", "", text, flags=0)
 
     text = re_sub(
-        r"\b\d{1,2}:\d{2}:\d{2}[\.,]\d{1,3}\s*-->\s*\d{1,2}:\d{2}:\d{2}[\.,]\d{1,3}.*?$",
+        r"\b\d{1,2}:\d{2}:\d{2}[\.,]\d{1,3}\s*-->\s*\d{1,2}:\d{2}:\d{2}[\.,]\d{1,3}.*$",
         " ",
         text,
         flags=MULTILINE,
@@ -297,21 +297,39 @@ def _extract_embedded_subtitle_to_srt(
     return tmp_path
 
 
-def _tag_embedded_subtitle_languages(video_path: str) -> None:
-    """Detect and tag missing language metadata for already-embedded subtitle streams."""
-    if is_plex_folder(video_path) or is_plex_folder(os_path.dirname(video_path)):
-        return
-    if not os_path.isfile(video_path):
-        return
+def _handle_existing_language_tag(out_s_index, language, title_overrides):
+    lang2_existing = _normalize_language_tag_to_iso639_2(language)
+    if lang2_existing:
+        title_overrides[out_s_index] = lang2_existing
 
-    streams = _probe_subtitle_streams(video_path)
-    if not streams:
-        return
 
-    ffmpeg = _which_or_log("ffmpeg")
-    if not ffmpeg:
-        return
+def _handle_title_lang2(out_s_index, title, lang_overrides):
+    title_lang2 = _lang2_from_title(title)
+    if title_lang2:
+        lang_overrides[out_s_index] = title_lang2
+        return True
+    return False
 
+
+def _handle_tmp_srt(out_s_index, ffmpeg, video_path, lang_overrides, title_overrides):
+    tmp_srt = _extract_embedded_subtitle_to_srt(ffmpeg, video_path, out_s_index)
+    if not tmp_srt:
+        return
+    try:
+        detected, is_sdh = _detect_subtitle_language_and_sdh(tmp_srt)
+    finally:
+        try:
+            remove(tmp_srt)
+        except OSError:
+            pass
+    if detected:
+        lang_overrides[out_s_index] = detected
+        title_overrides[out_s_index] = f"{detected} SDH" if is_sdh else detected
+
+
+def _get_overrides(
+    streams: List[Dict[str, Any]], video_path: str, ffmpeg: str
+) -> Tuple[Dict[int, str], Dict[int, str]]:
     lang_overrides: Dict[int, str] = {}
     title_overrides: Dict[int, str] = {}
     for out_s_index, stream in enumerate(streams):
@@ -319,37 +337,34 @@ def _tag_embedded_subtitle_languages(video_path: str) -> None:
         language = tags.get("language") if isinstance(tags, dict) else None
         title = tags.get("title") if isinstance(tags, dict) else None
 
-        if not _subtitle_language_needs_tag(language):
-            if not (title or ""):
-                lang2_existing = _normalize_language_tag_to_iso639_2(language)
-                if lang2_existing:
-                    title_overrides[out_s_index] = lang2_existing
+        if not _subtitle_language_needs_tag(language) and not (title or ""):
+            _handle_existing_language_tag(out_s_index, language, title_overrides)
             continue
 
-        title_lang2 = _lang2_from_title(title)
-        if title_lang2:
-            lang_overrides[out_s_index] = title_lang2
+        if _handle_title_lang2(out_s_index, title, lang_overrides):
             continue
 
-        tmp_srt = _extract_embedded_subtitle_to_srt(
-            ffmpeg,
-            video_path,
-            out_s_index,
+        _handle_tmp_srt(
+            out_s_index, ffmpeg, video_path, lang_overrides, title_overrides
         )
-        if not tmp_srt:
-            continue
 
-        try:
-            detected, is_sdh = _detect_subtitle_language_and_sdh(tmp_srt)
-        finally:
-            try:
-                remove(tmp_srt)
-            except OSError:
-                pass
+    return lang_overrides, title_overrides
 
-        if detected:
-            lang_overrides[out_s_index] = detected
-            title_overrides[out_s_index] = f"{detected} SDH" if is_sdh else detected
+
+def _tag_embedded_subtitle_languages(video_path: str) -> None:
+    """Detect and tag missing language metadata for already-embedded subtitle streams."""
+    if not os_path.isfile(video_path):
+        return
+
+    ffmpeg = _which_or_log("ffmpeg")
+    if not ffmpeg:
+        return
+
+    streams = _probe_subtitle_streams(video_path)
+    if not streams:
+        return
+
+    lang_overrides, title_overrides = _get_overrides(streams, video_path, ffmpeg)
 
     if not lang_overrides and not title_overrides:
         return
@@ -702,16 +717,14 @@ def _discover_plans(directory: str) -> List[SubtitleMergePlan]:
                 plans, os_path.join(root, video_files[0]), root, subtitle_files
             )
 
-    result: List[SubtitleMergePlan] = []
-    for video_path, subs in plans.items():
-        unique = sorted({os_path.abspath(p) for p in subs})
-        if unique:
-            result.append(
-                SubtitleMergePlan(
-                    video_path=os_path.abspath(video_path),
-                    subtitle_paths=tuple(unique),
-                )
-            )
+    result = [
+        SubtitleMergePlan(
+            video_path=os_path.abspath(video_path),
+            subtitle_paths=tuple(sorted({os_path.abspath(p) for p in subs})),
+        )
+        for video_path, subs in plans.items()
+        if subs
+    ]
     result.sort(key=lambda p: p.video_path)
     return result
 
@@ -912,18 +925,15 @@ def merge_subtitles_in_directory(directory: str):
     if not get_enable_subtitle_embedding():
         return
 
-    if is_plex_folder(directory):
-        return
-
     for root, _, files in walk(directory, topdown=True):
         if is_plex_folder(root):
             continue
-        for f in files:
-            if f.lower().endswith(VIDEO_EXTENSIONS):
-                try:
-                    _tag_embedded_subtitle_languages(os_path.join(root, f))
-                except OSError:
-                    continue
+        video_files = [f for f in files if f.lower().endswith(VIDEO_EXTENSIONS)]
+        for f in video_files:
+            try:
+                _tag_embedded_subtitle_languages(os_path.join(root, f))
+            except OSError:
+                continue
 
     plans = _discover_plans(directory)
     try:

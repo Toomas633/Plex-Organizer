@@ -5,7 +5,9 @@
   },
   "mounts": [
     "source=${localWorkspaceFolder}/testData,target=${containerWorkspaceFolder}/testData,type=bind,consistency=cached",
-    "source=${localWorkspaceFolder}/testEnv,target=${containerWorkspaceFolder}/testEnv,type=bind,consistency=cached"
+    "source=${localWorkspaceFolder}/testEnv,target=${containerWorkspaceFolder}/testEnv,type=bind,consistency=cached",
+    "source=vscode-extensions,target=/root/.vscode-server/extensions,type=volume",
+    "source=vscode-server-data,target=/root/.vscode-server/data,type=volume"
   ],
   "remoteUser": "vscode",
   "postCreateCommand": "python3 -m venv venv && ./venv/bin/python -m pip install --upgrade pip && ./venv/bin/python -m pip install -r requirements.txt",
@@ -20,10 +22,7 @@
         "[python]": {
           "editor.defaultFormatter": "ms-python.black-formatter"
         },
-        "sonarlint.connectedMode.project": {
-          "connectionId": "toomas633",
-          "projectKey": "Toomas633_Plex-Organizer"
-        }
+        "sonarlint.ls.javaHome": "/usr/lib/jvm/java-25-openjdk-arm64"
       },
       "extensions": [
         "ms-python.python",

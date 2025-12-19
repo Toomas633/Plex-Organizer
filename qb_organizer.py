@@ -53,16 +53,7 @@ def _delete_unwanted_files(directory: str):
         None
     """
     for root, _, files in walk(directory, topdown=False):
-        for folder in find_folders(root):
-            folder_parts = {os_path.normcase(part) for part in folder.split(os_sep)}
-            if any(
-                os_path.normcase(unwanted) in folder_parts
-                for unwanted in UNWANTED_FOLDERS
-            ):
-                try:
-                    rmtree(folder)
-                except OSError as e:
-                    log_error(f"Failed to delete folder {folder}: {e}")
+        _delete_unwanted_directories(root)
 
         unwanted_files = [
             f for f in files if not f.endswith(EXT_FILTER) or "sample" in f.lower()
@@ -74,6 +65,27 @@ def _delete_unwanted_files(directory: str):
                 remove(file_path)
             except OSError as e:
                 log_error(f"Failed to delete file {file_path}: {e}")
+
+
+def _delete_unwanted_directories(root: str):
+    """
+    Deletes all unwanted subdirectories within the given directory.
+
+    Args:
+        directory (str): The directory to clean up.
+
+    Returns:
+        None
+    """
+    for folder in find_folders(root):
+        folder_parts = {os_path.normcase(part) for part in folder.split(os_sep)}
+        if any(
+            os_path.normcase(unwanted) in folder_parts for unwanted in UNWANTED_FOLDERS
+        ):
+            try:
+                rmtree(folder)
+            except OSError as e:
+                log_error(f"Failed to delete folder {folder}: {e}")
 
 
 def _delete_empty_directories(directory: str):

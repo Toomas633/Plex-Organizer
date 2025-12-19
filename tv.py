@@ -5,7 +5,7 @@ and logging errors or duplicates.
 """
 
 from os import path as os_path, makedirs
-from re import compile, IGNORECASE
+from re import compile as re_compile, IGNORECASE
 from utils import move_file, create_name, capitalize
 
 
@@ -30,8 +30,8 @@ def rename(directory: str, root: str, file: str, take_name_from_root=False):
     else:
         show_name = capitalize(directory.split(os_path.sep)[-1])
 
-    season_episode_pattern = compile(r"[. ]S(\d{2})[ .]?E(\d{2})", IGNORECASE)
-    quality_pattern = compile(r"[. ](\d{3,4}p)", IGNORECASE)
+    season_episode_pattern = re_compile(r"[. ]S(\d{2})[ .]?E(\d{2})", IGNORECASE)
+    quality_pattern = re_compile(r"[. ](\d{3,4}p)", IGNORECASE)
 
     season_episode_match = season_episode_pattern.search(file)
     if season_episode_match:
@@ -70,7 +70,7 @@ def move(directory: str, root: str, file: str, move_to_root=False):
     Returns:
         None
     """
-    season_pattern = compile(r"S(\d{2})", IGNORECASE)
+    season_pattern = re_compile(r"S(\d{2})", IGNORECASE)
     season_match = season_pattern.search(file)
     season = int(season_match.group(1)) if season_match else 0
 

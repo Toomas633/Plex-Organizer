@@ -34,7 +34,7 @@ copy_test_data() {
   cp -a "$source_path/." "$target_path/"
 }
 
-if [ -d "$ROOT_DIR/$SOURCE_DIR" ]; then
+if [[ -d "$ROOT_DIR/$SOURCE_DIR" ]]; then
   echo "Copying $SOURCE_DIR to $TARGET_DIR..."
   copy_test_data "$ROOT_DIR/$SOURCE_DIR" "$FULL_TARGET_DIR"
   echo "Done."
@@ -43,14 +43,14 @@ else
   exit 1
 fi
 
-if [ ! -d "$FULL_VENV_PATH" ]; then
+if [[ ! -d "$FULL_VENV_PATH" ]]; then
   echo "Creating virtual environment..."
   python3 -m venv "$FULL_VENV_PATH"
 else
   echo "Virtual environment already exists."
 fi
 
-if [ -f "$FULL_VENV_PATH/bin/activate" ]; then
+if [[ -f "$FULL_VENV_PATH/bin/activate" ]]; then
   echo "Activating virtual environment..."
   # shellcheck disable=SC1091
   source "$FULL_VENV_PATH/bin/activate"
@@ -61,7 +61,7 @@ else
   exit 1
 fi
 
-if [ -f "$FULL_SCRIPT_PATH" ]; then
+if [[ -f "$FULL_SCRIPT_PATH" ]]; then
   echo "Running $PYTHON_SCRIPT..."
   python "$FULL_SCRIPT_PATH" "$FULL_TARGET_DIR"
 else
