@@ -197,3 +197,4 @@ pyrightconfig.json
 testEnv*/
 testData/
 config.ini
+logs/
