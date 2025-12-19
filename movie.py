@@ -24,8 +24,12 @@ def rename(root: str, file: str):
     Returns:
         None
     """
-    pattern = r"^(.*?)(?:[.\s])?((?:\d{4}[.\s])+)(?:.*?(\d{3,4}p))?.*"
-    match = re_match(pattern, file)
+    correct_format = re_match(r"^.+ \(\d{4}\)(?: [^.]*)?\.[\w]+$", file)
+
+    if correct_format:
+        return
+
+    match = re_match(r"^(.*?)(?:[.\s])?((?:\d{4}[.\s])+)(?:.*?(\d{3,4}p))?.*", file)
 
     if not match:
         log_error(f"Filename does not match expected pattern: {file}. Skipping rename.")
