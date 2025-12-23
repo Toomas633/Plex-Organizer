@@ -7,29 +7,33 @@ and logging errors or duplicates.
 from os import path as os_path
 from re import match as re_match
 from log import log_error
-from utils import move_file, create_name, capitalize
+from utils import move_file, create_name, capitalize, find_corrected_directory
 
 
-def rename(root: str, file: str):
+def _create_name(file: str) -> str:
     """
-    Renames a movie file in the specified directory to a standardized format.
+    Creates a standardized movie file name based on its current name.
 
     The new name format is: "Name (Year) Quality.Extension" (e.g., "Inception (2010) 1080p.mkv").
     If the year or quality is missing, those parts are omitted.
 
     Args:
         root (str): The directory containing the file.
-        file (str): The name of the file to rename.
+        file (str): The name of the file.
 
     Returns:
-        None
+        str : The standardized file name or if the pattern does not match the original file name.
     """
-    pattern = r"^(.*?)(?:[.\s])?((?:\d{4}[.\s])+)(?:.*?(\d{3,4}p))?.*"
-    match = re_match(pattern, file)
+    correct_format = re_match(r"^.+ \(\d{4}\)(?: [^.]*)?\.[\w]+$", file)
+
+    if correct_format:
+        return file
+
+    match = re_match(r"^(.*?)(?:[.\s])?((?:\d{4}[.\s])+)(?:.*?(\d{3,4}p))?.*", file)
 
     if not match:
         log_error(f"Filename does not match expected pattern: {file}. Skipping rename.")
-        return
+        return file
 
     if not match.group(1):
         name = match.group(2)
@@ -53,21 +57,16 @@ def rename(root: str, file: str):
     if year:
         name_parts.append(f"({year})")
 
-    new_name = create_name(
+    return create_name(
         name_parts,
         os_path.splitext(file)[1],
         match.group(3) if match.group(3) else None,
     )
 
-    old_path = os_path.join(root, file)
-    new_path = os_path.join(root, new_name)
-
-    move_file(old_path, new_path, False)
-
 
 def move(directory: str, root: str, file: str):
     """
-    Moves a movie file from the source directory to the destination directory.
+    Renames and moves a movie file from the source directory to the destination directory.
 
     If the source directory contains a Plex folder, it deletes it before moving.
     Handles duplicate files and missing source files gracefully.
@@ -81,6 +80,11 @@ def move(directory: str, root: str, file: str):
         None
     """
     source_path = os_path.join(root, file)
-    destination_path = os_path.join(directory, file)
+    destination_path = os_path.join(
+        find_corrected_directory(directory), _create_name(file)
+    )
+
+    if source_path == destination_path:
+        return
 
     move_file(source_path, destination_path)

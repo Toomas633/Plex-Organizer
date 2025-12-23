@@ -1,6 +1,8 @@
 """Utility functions for file operations in Plex Organizer."""
 
-from os import path as os_path, sep as os_sep, listdir, remove, rename
+from os import path as os_path, sep as os_sep, listdir, remove
+from shutil import move
+from typing import List
 from log import log_error, log_duplicate
 from config import get_delete_duplicates, get_include_quality, get_capitalize
 
@@ -39,14 +41,14 @@ def find_folders(directory: str):
         return []
 
 
-def move_file(source_path: str, destination_path: str, move=True):
+def move_file(source_path: str, destination_path: str):
     """
     Move or rename a file, handling duplicates and errors.
 
     Args:
         source_path (str): The path to the source file.
         destination_path (str): The path to move or rename the file to.
-        move (bool, optional): If True, move the file; if False, rename. Defaults to True.
+        is_move (bool, optional): If True, move the file; if False, rename. Defaults to True.
     """
     if source_path == destination_path:
         return
@@ -57,8 +59,7 @@ def move_file(source_path: str, destination_path: str, move=True):
 
     if os_path.exists(destination_path):
         log_duplicate(
-            f"File already exists: {destination_path}. "
-            f"Skipping {'move' if move else 'rename'} for {source_path}."
+            f"File already exists: {destination_path}. Skipping move for {source_path}."
         )
 
         if get_delete_duplicates():
@@ -70,11 +71,9 @@ def move_file(source_path: str, destination_path: str, move=True):
         return
 
     try:
-        rename(source_path, destination_path)
+        move(source_path, destination_path)
     except OSError as e:
-        log_error(
-            f"Failed to {'move' if move else 'rename'} {source_path} to {destination_path}: {e}"
-        )
+        log_error(f"Failed to move {source_path} to {destination_path}: {e}")
 
 
 def create_name(parts: list[str | None], extension: str, quality: str | None = None):
@@ -165,3 +164,25 @@ def capitalize(title: str):
         else:
             result.append(word.lower())
     return " ".join(result)
+
+
+def find_corrected_directory(directory: str):
+    """
+    Find and return the corrected main folder for movies or TV shows.
+
+    Args:
+        directory (str): The directory to check.
+    Returns:
+        str: The path to the main folder if found, None otherwise.
+    """
+    is_relative = not directory.startswith(os_sep)
+    directory_parts: List[str] = [] if is_relative else [os_sep]
+
+    for part in directory.split(os_sep):
+        directory_parts.append(part)
+        if part.lower() == "movies":
+            break
+        if directory_parts[-2].lower() == "tv" if len(directory_parts) > 1 else False:
+            break
+
+    return os_path.join(*directory_parts)

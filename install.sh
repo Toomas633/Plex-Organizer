@@ -14,6 +14,7 @@ Creates ./venv (if missing) and installs Python dependencies from requirements.t
 Options:
   --upgrade   Pass --upgrade to pip when installing requirements
 EOF
+  return 0
 }
 
 PIP_UPGRADE_ARGS=()
@@ -45,7 +46,7 @@ else
   exit 1
 fi
 
-if [ ! -d "$VENV_DIR" ]; then
+if [[ ! -d "$VENV_DIR" ]]; then
   echo "Creating virtual environment at: $VENV_DIR"
   "$PYTHON" -m venv "$VENV_DIR"
 else
@@ -55,7 +56,7 @@ fi
 # shellcheck disable=SC1091
 source "$VENV_DIR/bin/activate"
 
-if [ ! -f "$REQUIREMENTS_FILE" ]; then
+if [[ ! -f "$REQUIREMENTS_FILE" ]]; then
   echo "Missing requirements file: $REQUIREMENTS_FILE" >&2
   exit 1
 fi

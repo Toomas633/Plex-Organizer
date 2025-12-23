@@ -6,7 +6,6 @@ and organizing media files.
 
 from typing import Dict
 
-
 VIDEO_EXTENSIONS = (".mkv", ".mp4")
 
 TEXT_SUBTITLE_EXTENSIONS = (".srt", ".vtt", ".ass", ".ssa")

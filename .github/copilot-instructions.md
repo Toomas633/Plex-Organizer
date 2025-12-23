@@ -2,7 +2,7 @@
 
 ## Big picture
 
-- Entry point is `qb_organizer.py`: orchestrates cleanup → rename → move → cleanup → (optional) audio-language tagging, and optionally removes a completed torrent via qBittorrent.
+- Entry point is `plex_organizer.py`: orchestrates cleanup → rename → move → cleanup → (optional) audio-language tagging, and optionally removes a completed torrent via qBittorrent.
 - Media-specific logic lives in `tv.py` and `movie.py`:
   - TV rename format: `Show Name SxxExx Quality.ext` (quality included only when `[Settings] include_quality = true`), then move into `tv/<Show>/Season <xx>/`.
   - Movie rename format: `Name (Year) Quality.ext` (quality included only when `[Settings] include_quality = true`), then move into the target movies folder.
@@ -49,8 +49,8 @@
 ## Developer workflows (Windows-first repo)
 
 - Fast local verification uses the provided VS Code task `Run Batch Script` → `test.bat`.
-  - It copies `testData/` into fresh `testEnv*` folders, creates/activates `venv/`, installs `requirements.txt`, then runs `qb_organizer.py` against multiple layouts.
-- Manual run (direct Python): `python qb_organizer.py <start_dir> [torrent_hash]`.
+  - It copies `testData/` into fresh `testEnv*` folders, creates/activates `venv/`, installs `requirements.txt`, then runs `plex_organizer.py` against multiple layouts.
+- Manual run (direct Python): `python plex_organizer.py <start_dir> [torrent_hash]`.
 - Linux/macOS wrapper script: `./run.sh <start_dir> [torrent_hash]` (expects `venv/` under repo root).
 
 ## Conventions to follow when changing code

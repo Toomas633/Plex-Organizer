@@ -3,7 +3,7 @@ set -euo pipefail
 
 SOURCE_DIR="testData"
 TARGET_DIR="testEnv"
-PYTHON_SCRIPT="qb_organizer.py"
+PYTHON_SCRIPT="plex_organizer.py"
 VENV_DIR="venv"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,6 +16,12 @@ copy_test_data() {
   local target_path="$2"
 
   mkdir -p "$target_path"
+  
+  if command -v parallel >/dev/null 2>&1; then
+    find "$source_path" -mindepth 1 -print0 | \
+      parallel -0 -j"$(nproc)" cp -a --parents {} "$target_path" 2>/dev/null
+    return 0
+  fi
 
   if command -v rsync >/dev/null 2>&1; then
     if rsync -a --delete "$source_path/." "$target_path/"; then
@@ -29,12 +35,13 @@ copy_test_data() {
     return 0
   fi
 
+  # Fallback to single-threaded cp
   rm -rf "$target_path"
   mkdir -p "$target_path"
   cp -a "$source_path/." "$target_path/"
 }
 
-if [ -d "$ROOT_DIR/$SOURCE_DIR" ]; then
+if [[ -d "$ROOT_DIR/$SOURCE_DIR" ]]; then
   echo "Copying $SOURCE_DIR to $TARGET_DIR..."
   copy_test_data "$ROOT_DIR/$SOURCE_DIR" "$FULL_TARGET_DIR"
   echo "Done."
@@ -43,14 +50,14 @@ else
   exit 1
 fi
 
-if [ ! -d "$FULL_VENV_PATH" ]; then
+if [[ ! -d "$FULL_VENV_PATH" ]]; then
   echo "Creating virtual environment..."
   python3 -m venv "$FULL_VENV_PATH"
 else
   echo "Virtual environment already exists."
 fi
 
-if [ -f "$FULL_VENV_PATH/bin/activate" ]; then
+if [[ -f "$FULL_VENV_PATH/bin/activate" ]]; then
   echo "Activating virtual environment..."
   # shellcheck disable=SC1091
   source "$FULL_VENV_PATH/bin/activate"
@@ -61,7 +68,7 @@ else
   exit 1
 fi
 
-if [ -f "$FULL_SCRIPT_PATH" ]; then
+if [[ -f "$FULL_SCRIPT_PATH" ]]; then
   echo "Running $PYTHON_SCRIPT..."
   python "$FULL_SCRIPT_PATH" "$FULL_TARGET_DIR"
 else
