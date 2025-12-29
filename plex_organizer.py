@@ -166,7 +166,7 @@ def main():
             _move_directories(directory)
             _delete_empty_directories(directory)
     except (OSError, ValueError) as e:
-        log_error(f"Error occured: {e}")
+        log_error(f"Unhandeled entrypoint error occured: {e}")
 
 
 if __name__ == "__main__":
