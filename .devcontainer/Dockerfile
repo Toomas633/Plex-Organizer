@@ -12,10 +12,11 @@ RUN apt-get update \
     python-is-python3 \
     python3 \
     python3-pip \
-    python3-venv \
-    # --- GPU/NPU support (runtime detection) ---
-    # Detect and enable all available GPU/NPU options: NVIDIA, Intel, AMD, Qualcomm (Adreno/Hexagon NPU)
-    && set -e; \
+    python3-venv
+
+# --- GPU/NPU support (runtime detection) ---
+# Detect and enable all available GPU/NPU options: NVIDIA, Intel, AMD, Qualcomm (Adreno/Hexagon NPU)
+RUN set -e; \
     # NVIDIA GPU support (if present, requires host runtime)
     if lspci | grep -i nvidia; then \
     apt-get update && apt-get install -y --no-install-recommends \
@@ -61,6 +62,7 @@ RUN apt-get update \
     echo 'NPU detected. Please install your NPU drivers here.'; \
     else \
     echo 'No NPU detected.'; \
-    fi; \
-    # Clean up
-    && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/*
+    fi
+
+# Clean up
+RUN apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/*
