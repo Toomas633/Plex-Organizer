@@ -121,6 +121,19 @@ def is_main_folder(start: str):
     return "movies" in folders or "tv" in folders
 
 
+def is_script_temp_file(file_name: str):
+    """
+    Check if the file is a temporary file created by the script.
+
+    Args:
+        file_name (str): The name of the file to check.
+    Returns:
+        bool: True if the file is a temporary file, False otherwise.
+    """
+    temp_file_indicators = [".langtag", ".submerge"]
+    return any(indicator in file_name for indicator in temp_file_indicators)
+
+
 def capitalize(title: str):
     """
     Capitalize a string like a TV or movie title (title case).
