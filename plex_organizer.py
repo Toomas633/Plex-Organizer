@@ -16,6 +16,7 @@ from utils import (
     find_folders,
     find_corrected_directory,
     is_plex_folder,
+    is_script_temp_file,
     is_tv_dir,
     is_main_folder,
 )
@@ -42,7 +43,11 @@ def _analyze_video_languages(directory: str):
 
     for root, _, files in walk(directory, topdown=False):
         for file in files:
-            if file.endswith(VIDEO_EXTENSIONS) and not is_plex_folder(root):
+            if (
+                file.endswith(VIDEO_EXTENSIONS)
+                and not is_plex_folder(root)
+                and not is_script_temp_file(file)
+            ):
                 file_path = os_path.join(root, file)
                 tag_audio_track_languages(file_path)
 
@@ -66,11 +71,12 @@ def _delete_unwanted_files(directory: str):
         ]
 
         for file in unwanted_files:
-            file_path = os_path.join(root, file)
-            try:
-                remove(file_path)
-            except OSError as e:
-                log_error(f"Failed to delete file {file_path}: {e}")
+            if not is_script_temp_file(file):
+                file_path = os_path.join(root, file)
+                try:
+                    remove(file_path)
+                except OSError as e:
+                    log_error(f"Failed to delete file {file_path}: {e}")
 
 
 def _delete_unwanted_directories(root: str):
@@ -123,7 +129,11 @@ def _move_directories(directory: str):
     """
     for root, _, files in walk(directory, topdown=False):
         for file in files:
-            if file.endswith(VIDEO_EXTENSIONS) and not is_plex_folder(root):
+            if (
+                file.endswith(VIDEO_EXTENSIONS)
+                and not is_plex_folder(root)
+                and not is_script_temp_file(file)
+            ):
                 if is_tv_dir(root):
                     tv_move(root, file)
                 else:
