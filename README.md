@@ -36,7 +36,7 @@ Plex Organizer is a Python-based utility designed to help manage and organize me
 Notes:
 
 - Cleanup is intentionally aggressive: only video files (`.mkv`, `.mp4`) and in-progress qBittorrent files (`.!qB`) are kept. Subtitle files/folders (e.g. `Subs/`, `Subtitles/`) are removed.
-- If qBittorrent torrent removal is enabled (by providing a torrent hash), the qBittorrent Web API must be reachable and **must not require authentication** (this tool does not log in).
+- If qBittorrent torrent removal is enabled (by providing a torrent hash), the qBittorrent Web API must be reachable.
 
 ### Example Directory Structure
 
@@ -154,6 +154,8 @@ Key sections:
 
 - `[qBittorrent]`
   - `host`: Base URL for the Web API (default `http://localhost:8081`). Used for torrent removal.
+  - `username`: Username for qbittorrent web api
+  - `passowrd`: Password to authenticate with
 - `[Settings]`
   - `delete_duplicates`: If `true`, deletes source files when the destination already exists.
   - `include_quality`: If `true`, appends quality like `1080p` to renamed files.
