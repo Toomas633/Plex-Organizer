@@ -57,10 +57,10 @@ else
   echo "Virtual environment already exists."
 fi
 
-if [[ -f "$FULL_VENV_PATH/Scripts/activate" ]]; then
+if [[ -f "$FULL_VENV_PATH/bin/activate" ]]; then
   echo "Activating virtual environment..."
   # shellcheck disable=SC1091
-  source "$FULL_VENV_PATH/Scripts/activate"
+  source "$FULL_VENV_PATH/bin/activate"
   echo "Installing requirements..."
   python -m pip install -r "$ROOT_DIR/requirements.txt"
 else

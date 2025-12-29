@@ -54,7 +54,7 @@ else
 fi
 
 # shellcheck disable=SC1091
-source "$VENV_DIR/Scripts/activate"
+source "$VENV_DIR/bin/activate"
 
 if [[ ! -f "$REQUIREMENTS_FILE" ]]; then
   echo "Missing requirements file: $REQUIREMENTS_FILE" >&2
