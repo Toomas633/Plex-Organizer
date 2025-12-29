@@ -5,9 +5,11 @@ and interacts with qBittorrent and Plex folder structures.
 """
 
 from os import walk, remove, listdir, rmdir, path as os_path, sep as os_sep
+from fcntl import flock, LOCK_EX, LOCK_NB
+from time import sleep
 from sys import argv, exit as sys_exit
 from shutil import rmtree
-from log import log_error, check_clear_log
+from log import log_error, check_clear_log, log_debug
 from qb import remove_torrent
 from tv import move as tv_move
 from movie import move as movie_move
@@ -26,6 +28,20 @@ from subtitles import merge_subtitles_in_directory
 
 START_DIR = argv[1]
 TORRENT_HASH = argv[2] if len(argv) > 2 else None
+
+
+def _get_lock():
+    lock_file_path = os_path.join(os_path.dirname(__file__), ".plex_organizer.lock")
+    while True:
+        try:
+            with open(lock_file_path, "w", encoding="utf-8") as lock_file:
+                flock(lock_file, LOCK_EX | LOCK_NB)
+                break
+        except OSError:
+            log_debug(
+                "Another instance of plex_organizer.py is already running. Waiting..."
+            )
+            sleep(10)
 
 
 def _analyze_video_languages(directory: str):
@@ -148,7 +164,7 @@ def main():
     Returns:
         None
     """
-
+    _get_lock()
     ensure_config_exists()
     check_clear_log()
     if len(argv) < 2:
