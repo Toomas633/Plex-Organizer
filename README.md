@@ -121,7 +121,6 @@ start_directory/
    git clone https://github.com/Toomas633/Plex-Organizer.git
    cd Plex-Organizer
    ```
-
 2. Install dependencies (recommended):
 
 ```bash
@@ -160,7 +159,11 @@ Key sections:
   - `include_quality`: If `true`, appends quality like `1080p` to renamed files.
   - `capitalize`: If `true`, title-cases show/movie names.
 - `[Logging]`
-  - `enable_logging`, `log_file`, `clear_log`, `timestamped_log_files`
+  - `enable_logging`: If `true`, logs errors to a log file
+  - `log_file`: Name of the log file
+  - `clear_log`: If `true`, log file is cleared on each run of the script
+  - `timestamped_log_files`: If `true`, log files are timestamped and put to logs folder
+  - `level`: Either `INFO` by default or `DEBUG` if Debug log rows are needed
 - `[Audio]`
   - `enable_audio_tagging`: If `true`, runs audio language tagging after moves.
   - `whisper_model_size`: Whisper model size for `faster-whisper` (default `tiny`).

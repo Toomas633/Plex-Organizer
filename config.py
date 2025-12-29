@@ -26,6 +26,7 @@ def ensure_config_exists():
             "log_file": "plex-organizer.log",
             "clear_log": "false",
             "timestamped_log_files": "false",
+            "level": "INFO",
         },
         "Audio": {
             "enable_audio_tagging": "true",
@@ -164,3 +165,9 @@ def get_cpu_threads():
     """Return the number of CPU threads to use from settings."""
     config = _get_config()
     return config.getint("Settings", "cpu_threads", fallback=2)
+
+
+def get_logging_level():
+    """Return the logging level from the config file."""
+    config = _get_config()
+    return config.get("Logging", "level", fallback="INFO")

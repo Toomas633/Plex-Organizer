@@ -5,7 +5,7 @@ including removing torrents by hash and logging errors if removal fails.
 
 from sys import exit as sys_exit
 from requests import post
-from log import log_error
+from log import log_debug, log_error
 from config import get_host
 
 
@@ -22,11 +22,15 @@ def remove_torrent(torrent_hash: str):
     Returns:
         None
     """
+    log_debug(f"Attempting to remove torrent with hash: {torrent_hash}")
+
     response = post(
         f"{get_host()}/api/v2/torrents/delete",
         data={"hashes": torrent_hash, "deleteFiles": "false"},
         timeout=10,
     )
+
+    log_debug(f"qBittorrent response: {response}")
 
     if response.status_code != 200:
         log_error(f"Error deleting torrent '{torrent_hash}': {response.text}")

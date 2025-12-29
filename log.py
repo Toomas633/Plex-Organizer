@@ -10,6 +10,7 @@ from config import (
     get_clear_log,
     get_log_file,
     get_enable_logging,
+    get_logging_level,
     get_timestamped_log_files,
 )
 
@@ -72,6 +73,20 @@ def log_duplicate(message: str):
         None
     """
     _log_message("DUPLICATE", message)
+
+
+def log_debug(message: str):
+    """
+    Logs a debug message to the log file.
+
+    Args:
+        message (str): The debug message to log.
+
+    Returns:
+        None
+    """
+    if get_logging_level().upper() == "DEBUG":
+        _log_message("DEBUG", message)
 
 
 def check_clear_log():
