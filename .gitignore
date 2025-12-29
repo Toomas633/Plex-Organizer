@@ -198,3 +198,4 @@ testEnv*/
 testData/
 config.ini
 logs/
+*.lock

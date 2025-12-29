@@ -14,7 +14,11 @@ def ensure_config_exists():
     preserving user edits.
     """
     default_config = {
-        "qBittorrent": {"host": "http://localhost:8081"},
+        "qBittorrent": {
+            "host": "http://localhost:8081",
+            "username": "admin",
+            "password": "your_password_here",
+        },
         "Settings": {
             "delete_duplicates": "false",
             "include_quality": "true",
@@ -171,3 +175,15 @@ def get_logging_level():
     """Return the logging level from the config file."""
     config = _get_config()
     return config.get("Logging", "level", fallback="INFO")
+
+
+def get_qbittorrent_username():
+    """Return the qBittorrent username from the config file."""
+    config = _get_config()
+    return config.get("qBittorrent", "username")
+
+
+def get_qbittorrent_password():
+    """Return the qBittorrent password from the config file."""
+    config = _get_config()
+    return config.get("qBittorrent", "password")

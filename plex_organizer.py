@@ -164,13 +164,17 @@ def main():
     Returns:
         None
     """
-    _get_lock()
-    ensure_config_exists()
-    check_clear_log()
     if len(argv) < 2:
         log_error("Error: No directory provided.")
         log_error("Usage: qb_delete.py <dir> <optional_torrent_hash>")
         sys_exit(1)
+
+    ensure_config_exists()
+    check_clear_log()
+    _get_lock()
+    log_debug(
+        f"Starting Plex Organizer with directory: {START_DIR} and torrent hash: {TORRENT_HASH}"
+    )
 
     try:
         if TORRENT_HASH:
@@ -184,7 +188,7 @@ def main():
             ]
         else:
             directories = [START_DIR]
-
+        log_debug(f"Processing directories: {directories}")
         for directory in directories:
             merge_subtitles_in_directory(directory)
             _analyze_video_languages(directory)
