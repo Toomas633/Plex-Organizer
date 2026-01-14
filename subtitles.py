@@ -26,7 +26,7 @@ from const import (
     SUBTITLE_EXTENSIONS,
 )
 from dataclass import SubtitleMergePlan
-from log import log_error
+from log import log_error, log_debug
 from utils import is_plex_folder
 
 DetectorFactory.seed = 0
@@ -908,7 +908,7 @@ def _embed_subtitles(plan: SubtitleMergePlan) -> None:
             log_error(f"Failed to clean up temporary file '{tmp_path}': {e}")
 
 
-def merge_subtitles_in_directory(directory: str):
+def merge_subtitles_in_directory(directory: str, root: str, files: list[str]):
     """Discover and embed subtitles for videos under *directory*.
 
     This is a best-effort operation: failures are logged and will not raise.
@@ -917,19 +917,22 @@ def merge_subtitles_in_directory(directory: str):
     if not get_enable_subtitle_embedding():
         return
 
-    for root, _, files in walk(directory, topdown=True):
-        if is_plex_folder(root):
+    if is_plex_folder(root):
+        return
+    video_files = [f for f in files if f.lower().endswith(VIDEO_EXTENSIONS)]
+    for f in video_files:
+        try:
+            _tag_embedded_subtitle_languages(os_path.join(root, f))
+        except OSError:
             continue
-        video_files = [f for f in files if f.lower().endswith(VIDEO_EXTENSIONS)]
-        for f in video_files:
-            try:
-                _tag_embedded_subtitle_languages(os_path.join(root, f))
-            except OSError:
-                continue
 
     plans = _discover_plans(directory)
     try:
         for plan in plans:
+            log_debug(
+                f"Embedding subtitles for video: {plan.video_path} "
+                f"from files: {plan.subtitle_paths}"
+            )
             _embed_subtitles(plan)
     except (OSError, RuntimeError, ValueError) as e:
         log_error(f"Unexpected error during subtitle merging: {e}")

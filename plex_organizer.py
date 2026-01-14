@@ -1,7 +1,15 @@
-"""
-This script organizes downloaded media files by cleaning up, renaming, and moving them
-to appropriate directories for TV and movies. It also handles unwanted files, empty folders,
-and interacts with qBittorrent and Plex folder structures.
+"""Plex media organizer entrypoint.
+
+This script walks a target directory (either a single torrent save folder, or a “main”
+folder containing ``tv/`` and/or ``movies/``), and performs these steps:
+
+- Optionally embeds external subtitles into matching video files.
+- Optionally tags missing/unknown audio stream language metadata.
+- Deletes unwanted files and unwanted subfolders (aggressive cleanup).
+- Renames and moves video files into their final TV/Movie layout.
+- Deletes empty folders.
+
+It can also remove a completed torrent from qBittorrent when a torrent hash is provided.
 """
 
 from os import walk, remove, listdir, rmdir, path as os_path, sep as os_sep
@@ -31,6 +39,13 @@ TORRENT_HASH = argv[2] if len(argv) > 2 else None
 
 
 def _get_lock():
+    """Best-effort single-instance lock.
+
+    Repeatedly attempts to acquire a non-blocking exclusive lock on a lock file.
+    If another process holds the lock, the function sleeps and retries.
+
+    Note: the lock is advisory (``flock``).
+    """
     lock_file_path = os_path.join(os_path.dirname(__file__), ".plex_organizer.lock")
     while True:
         try:
@@ -44,67 +59,56 @@ def _get_lock():
             sleep(10)
 
 
-def _analyze_video_languages(directory: str):
-    """
-    Analyzes and tags audio track languages for video files in the given directory.
+def _analyze_video_languages(root: str, files: list[str]):
+    """Analyze and tag missing audio language metadata for video files.
+
+    This step is enabled/disabled via config and skips Plex-managed folders and
+    temporary files created by this script.
 
     Args:
-        directory (str): The directory to process.
-
-    Returns:
-        None
+        root: Current directory being walked.
+        files: Filenames present in *root*.
     """
     if not get_enable_audio_tagging():
         return
 
-    for root, _, files in walk(directory, topdown=False):
-        for file in files:
-            if (
-                file.endswith(VIDEO_EXTENSIONS)
-                and not is_plex_folder(root)
-                and not is_script_temp_file(file)
-            ):
-                file_path = os_path.join(root, file)
-                tag_audio_track_languages(file_path)
+    for file in files:
+        if (
+            file.endswith(VIDEO_EXTENSIONS)
+            and not is_plex_folder(root)
+            and not is_script_temp_file(file)
+        ):
+            file_path = os_path.join(root, file)
+            tag_audio_track_languages(file_path)
 
 
-def _delete_unwanted_files(directory: str):
-    """
-    Deletes files in the given directory (and subdirectories) that do not match allowed extensions,
-    and removes unwanted folders.
+def _delete_unwanted_files(root: str, files: list[str]):
+    """Delete unwanted files and unwanted subfolders under *root*.
+
+    Files are removed when they do not match the allow-list extension filter or when
+    they look like sample media. Temporary files created by this script are preserved.
 
     Args:
-        directory (str): The directory to clean up.
-
-    Returns:
-        None
+        root: Current directory being walked.
+        files: Filenames present in *root*.
     """
-    for root, _, files in walk(directory, topdown=False):
-        _delete_unwanted_directories(root)
+    _delete_unwanted_directories(root)
 
-        unwanted_files = [
-            f for f in files if not f.endswith(EXT_FILTER) or "sample" in f.lower()
-        ]
+    unwanted_files = [
+        f for f in files if not f.endswith(EXT_FILTER) or "sample" in f.lower()
+    ]
 
-        for file in unwanted_files:
-            if not is_script_temp_file(file):
-                file_path = os_path.join(root, file)
-                try:
-                    remove(file_path)
-                except OSError as e:
-                    log_error(f"Failed to delete file {file_path}: {e}")
+    for file in unwanted_files:
+        if not is_script_temp_file(file):
+            file_path = os_path.join(root, file)
+            try:
+                remove(file_path)
+            except OSError as e:
+                log_error(f"Failed to delete file {file_path}: {e}")
 
 
 def _delete_unwanted_directories(root: str):
-    """
-    Deletes all unwanted subdirectories within the given directory.
-
-    Args:
-        directory (str): The directory to clean up.
-
-    Returns:
-        None
-    """
+    """Delete unwanted subdirectories under *root* (recursive)."""
     for folder in find_folders(root):
         folder_parts = {os_path.normcase(part) for part in folder.split(os_sep)}
         if any(
@@ -117,15 +121,7 @@ def _delete_unwanted_directories(root: str):
 
 
 def _delete_empty_directories(directory: str):
-    """
-    Deletes all empty subdirectories within the given directory.
-
-    Args:
-        directory (str): The directory to clean up.
-
-    Returns:
-        None
-    """
+    """Delete empty subdirectories under *directory* (post-order)."""
     for root, dirs, _ in walk(find_corrected_directory(directory), topdown=False):
         for dir_name in dirs:
             dir_path = os_path.join(root, dir_name)
@@ -133,36 +129,45 @@ def _delete_empty_directories(directory: str):
                 rmdir(dir_path)
 
 
-def _move_directories(directory: str):
-    """
-    Moves video files from subdirectories to the main directory using the appropriate handler.
+def _move_directories(directory: str, root: str, files: list[str]):
+    """Move/rename video files found in *root*.
+
+    Dispatches to the TV or Movie handler based on the current directory path.
 
     Args:
-        directory (str): The target directory (MOVIES_DIR or TV_DIR).
-
-    Returns:
-        None
+        directory: The base directory being processed (used as the movie destination root).
+        root: Current directory being walked.
+        files: Filenames present in *root*.
     """
+
+    for file in files:
+        if (
+            file.endswith(VIDEO_EXTENSIONS)
+            and not is_plex_folder(root)
+            and not is_script_temp_file(file)
+        ):
+            if is_tv_dir(root):
+                tv_move(root, file)
+            else:
+                movie_move(directory, root, file)
+
+
+def _process_directory(directory: str):
+    """Run the full organizer pipeline for a single directory tree."""
     for root, _, files in walk(directory, topdown=False):
-        for file in files:
-            if (
-                file.endswith(VIDEO_EXTENSIONS)
-                and not is_plex_folder(root)
-                and not is_script_temp_file(file)
-            ):
-                if is_tv_dir(root):
-                    tv_move(root, file)
-                else:
-                    movie_move(directory, root, file)
+        merge_subtitles_in_directory(directory, root, files)
+        _analyze_video_languages(root, files)
+        _delete_unwanted_files(root, files)
+        _move_directories(directory, root, files)
+
+    _delete_empty_directories(directory)
 
 
 def main():
-    """
-    Main entry point for the organizer script.
-    Handles argument parsing, torrent removal, and file organization steps.
+    """CLI entrypoint.
 
-    Returns:
-        None
+    Validates args, ensures config/logs exist, optionally removes a torrent from
+    qBittorrent, then processes either a main folder or a single directory.
     """
     if len(argv) < 2:
         log_error("Error: No directory provided.")
@@ -190,11 +195,7 @@ def main():
             directories = [START_DIR]
         log_debug(f"Processing directories: {directories}")
         for directory in directories:
-            merge_subtitles_in_directory(directory)
-            _analyze_video_languages(directory)
-            _delete_unwanted_files(directory)
-            _move_directories(directory)
-            _delete_empty_directories(directory)
+            _process_directory(directory)
     except (OSError, ValueError) as e:
         log_error(f"Unhandeled entrypoint error occured: {e}")
 

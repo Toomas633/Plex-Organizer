@@ -14,15 +14,14 @@ def _create_name(file: str) -> str:
     """
     Creates a standardized movie file name based on its current name.
 
-    The new name format is: "Name (Year) Quality.Extension" (e.g., "Inception (2010) 1080p.mkv").
-    If the year or quality is missing, those parts are omitted.
+    The new name format is: "Name (Year) [Quality].Extension".
+    Quality is only included when enabled via config and when it can be detected.
 
     Args:
-        root (str): The directory containing the file.
-        file (str): The name of the file.
+        file (str): The movie filename.
 
     Returns:
-        str : The standardized file name or if the pattern does not match the original file name.
+        str: The standardized file name (or the original name if no rename is possible).
     """
     correct_format = re_match(r"^.+ \(\d{4}\)(?: [^.]*)?\.[\w]+$", file)
 
