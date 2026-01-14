@@ -30,13 +30,14 @@ Plex Organizer is a Python-based utility designed to help manage and organize me
 - **Customizable Directories**: Supports separate directories for TV shows and movies.
 - **Handle Plex:** Handles plex directories and optimized versions.
 - **Audio language tagging (optional)**: If enabled, detects missing audio track languages and writes ISO 639-2 tags into the container metadata (uses `ffprobe`/`ffmpeg` + `faster-whisper`).
-- **Subtitle embedding (optioanl)**: If enabled, detects subtitles that can and should be embedded to the video file. Also detects subtitle language and type and tags the metadata (uses `ffprobe`/`ffmpeg` + `langdetect`)
+- **Subtitle embedding (optional)**: If enabled, embeds external subtitles into the video file and tags subtitle language/type metadata (uses `ffprobe`/`ffmpeg` + `langdetect`).
 - **Config file:** Ini file for common configuration options that can be set, disabled or enabled (_beware, some settings might not do anything if already run and info removed from file names, for example turning off quality inclusion and then enabling it_)
 
 Notes:
 
-- Cleanup is intentionally aggressive: only video files (`.mkv`, `.mp4`) and in-progress qBittorrent files (`.!qB`) are kept. Subtitle files/folders (e.g. `Subs/`, `Subtitles/`) are removed.
-- If qBittorrent torrent removal is enabled (by providing a torrent hash), the qBittorrent Web API must be reachable.
+- Cleanup is intentionally aggressive: only video files (`.mkv`, `.mp4`), in-progress qBittorrent files (`.!qB`), and the organizer index file (`.plex_organizer.index`) are kept. Subtitle files/folders (e.g. `Subs/`, `Subtitles/`) are removed.
+- The organizer keeps a per-library index (`.plex_organizer.index`) so already-processed files can be skipped on future runs.
+- If qBittorrent torrent removal is enabled (by providing a torrent hash), the qBittorrent Web API must be reachable and credentials must be set.
 
 ### Example Directory Structure
 
@@ -111,7 +112,7 @@ start_directory/
 
 - Python 3.x
 - Dependencies listed in `requirements.txt`
-- `ffmpeg`/`ffprobe` on PATH (required only if `enable_audio_tagging = true`)
+- `ffmpeg`/`ffprobe` on PATH (required if `enable_audio_tagging = true` and/or `enable_subtitle_embedding = true`)
 
 ## Installation
 
@@ -121,6 +122,7 @@ start_directory/
    git clone https://github.com/Toomas633/Plex-Organizer.git
    cd Plex-Organizer
    ```
+
 2. Install dependencies (recommended):
 
 ```bash
@@ -155,11 +157,12 @@ Key sections:
 - `[qBittorrent]`
   - `host`: Base URL for the Web API (default `http://localhost:8081`). Used for torrent removal.
   - `username`: Username for qbittorrent web api
-  - `passowrd`: Password to authenticate with
+  - `password`: Password to authenticate with
 - `[Settings]`
   - `delete_duplicates`: If `true`, deletes source files when the destination already exists.
   - `include_quality`: If `true`, appends quality like `1080p` to renamed files.
   - `capitalize`: If `true`, title-cases show/movie names.
+  - `cpu_threads`: Limits CPU parallelism for some processing steps.
 - `[Logging]`
   - `enable_logging`: If `true`, logs errors to a log file
   - `log_file`: Name of the log file
@@ -170,9 +173,9 @@ Key sections:
   - `enable_audio_tagging`: If `true`, runs audio language tagging after moves.
   - `whisper_model_size`: Whisper model size for `faster-whisper` (default `tiny`).
 - `[Subtitles]`
-  - `enable_subtitle_embedding`: If `true`, runs audio subtitle embedding and tagging before subtitle files are removed.
+  - `enable_subtitle_embedding`: If `true`, embeds external subtitles and tags metadata before subtitle files/folders are removed.
 
-**NB!!** Make sure the qBittorrent `host` is correct. If you pass a torrent hash and the API call fails, the organizer exits before processing.
+**NB!!** Make sure the qBittorrent `host` is correct. Torrent removal is best-effort: failures are logged and processing continues.
 
 ## Usage
 
