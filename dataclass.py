@@ -44,3 +44,29 @@ class SubtitleMergePlan:
 
     video_path: str
     subtitle_paths: Tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class IndexEntry:
+    """Metadata recorded when a media file is marked as processed.
+
+    Attributes:
+        processed_at: UTC timestamp (ISO 8601) when the file was processed.
+    """
+
+    processed_at: str
+
+
+@dataclass(frozen=True)
+class IndexSummary:
+    """Summary of an indexing run.
+
+    Attributes:
+        total_videos: Number of video files encountered.
+        eligible_videos: Number of videos that were already in correct place/name.
+        newly_indexed: Number of eligible videos newly written to index files.
+    """
+
+    total_videos: int
+    eligible_videos: int
+    newly_indexed: int

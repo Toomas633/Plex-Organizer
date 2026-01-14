@@ -5,6 +5,7 @@ and organizing media files.
 """
 
 from typing import Dict
+from re import compile as re_compile
 
 VIDEO_EXTENSIONS = (".mkv", ".mp4")
 
@@ -15,7 +16,7 @@ SUBTITLE_EXTENSIONS = TEXT_SUBTITLE_EXTENSIONS + (
     ".idx",
 )
 
-EXT_FILTER = VIDEO_EXTENSIONS + (".!qB",)
+EXT_FILTER = VIDEO_EXTENSIONS + (".!qB", ".index")
 
 UNWANTED_FOLDERS = {
     "Plex Versions",
@@ -104,3 +105,9 @@ ISO639_1_TO_2: Dict[str, str] = {
     "vi": "vie",
     "zh": "zho",
 }
+
+INDEX_FILENAME = ".plex_organizer.index"
+
+MOVIE_CORRECT_NAME_RE = re_compile(r"^.+ \(\d{4}\)(?: \d{3,4}p)?\.[\w]+$", flags=0)
+TV_CORRECT_NAME_RE = re_compile(r"^.+ S(\d{2})E(\d{2})(?: \d{3,4}p)?\.[\w]+$", flags=0)
+TV_CORRECT_SEASON_RE = re_compile(r"^Season (\d{2})$", flags=0)

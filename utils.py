@@ -48,7 +48,9 @@ def move_file(source_path: str, destination_path: str):
     Args:
         source_path (str): The path to the source file.
         destination_path (str): The path to move or rename the file to.
-        is_move (bool, optional): If True, move the file; if False, rename. Defaults to True.
+
+    Returns:
+        None
     """
     if source_path == destination_path:
         return
@@ -81,7 +83,10 @@ def create_name(parts: list[str | None], extension: str, quality: str | None = N
     Create a standardized file name from a list of parts.
 
     Args:
-        parts (list): A list of parts to include in the file name.
+        parts (list[str | None]): Name components to include (empty/None parts are skipped).
+        extension (str): File extension including the leading dot (e.g. ".mkv").
+        quality (str | None): Optional quality token (e.g. "1080p"). Included only when
+            enabled via config.
 
     Returns:
         str: The standardized file name.
@@ -127,6 +132,7 @@ def is_script_temp_file(file_name: str):
 
     Args:
         file_name (str): The name of the file to check.
+
     Returns:
         bool: True if the file is a temporary file, False otherwise.
     """
@@ -185,8 +191,9 @@ def find_corrected_directory(directory: str):
 
     Args:
         directory (str): The directory to check.
+
     Returns:
-        str: The path to the main folder if found, None otherwise.
+        str: The corrected base path, truncated at the nearest "movies" or "tv/<Show>" boundary.
     """
     is_relative = not directory.startswith(os_sep)
     directory_parts: List[str] = [] if is_relative else [os_sep]

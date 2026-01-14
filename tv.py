@@ -45,7 +45,7 @@ def _create_name(root: str, file: str) -> str:
     )
 
 
-def move(root: str, file: str):
+def move(root: str, file: str) -> str:
     """
     Renames and moves a TV episode file to its correct season folder.
 
@@ -70,9 +70,10 @@ def move(root: str, file: str):
     new_path = os_path.join(correct_path, new_name)
 
     if root == correct_path:
-        return
+        return old_path
 
     if not os_path.exists(correct_path):
         makedirs(correct_path)
 
     move_file(old_path, new_path)
+    return new_path

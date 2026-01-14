@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from config import get_cpu_threads
 from const import ISO639_1_TO_2
 from dataclass import AudioStream
-from log import log_error
+from log import log_error, log_debug
 from utils import is_plex_folder
 from whisper_detector import WhisperDetector
 
@@ -516,6 +516,8 @@ def tag_audio_track_languages(video_path: str) -> None:
     if is_plex_folder(video_path) or is_plex_folder(os_path.dirname(video_path)):
         return
 
+    log_debug(f"Tagging audio languages for video: {video_path}")
+
     try:
         streams = _probe_audio_streams(video_path)
         if not streams:
@@ -523,6 +525,15 @@ def tag_audio_track_languages(video_path: str) -> None:
 
         detections = _detect_languages_for_streams(video_path, streams)
 
+        log_debug(
+            f"Detected audio languages for '{video_path}': "
+            + ", ".join(
+                f"Stream {s.audio_index}: "
+                f"{lang if lang else 'und'} "
+                f"(conf={conf:.2f})"
+                for s, lang, conf in detections
+            )
+        )
         _apply_language_metadata(video_path, detections)
     except (RuntimeError, OSError, ValueError) as e:
         log_error(str(e))
