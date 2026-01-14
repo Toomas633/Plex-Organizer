@@ -7,6 +7,7 @@ and logging errors or duplicates.
 from os import path as os_path
 from re import match as re_match
 from log import log_error
+from const import MOVIE_CORRECT_NAME_RE
 from utils import move_file, create_name, capitalize, find_corrected_directory
 
 
@@ -23,9 +24,7 @@ def _create_name(file: str) -> str:
     Returns:
         str: The standardized file name (or the original name if no rename is possible).
     """
-    correct_format = re_match(r"^.+ \(\d{4}\)(?: [^.]*)?\.[\w]+$", file)
-
-    if correct_format:
+    if MOVIE_CORRECT_NAME_RE.match(file):
         return file
 
     match = re_match(r"^(.*?)(?:[.\s])?((?:\d{4}[.\s])+)(?:.*?(\d{3,4}p))?.*", file)
@@ -63,7 +62,7 @@ def _create_name(file: str) -> str:
     )
 
 
-def move(directory: str, root: str, file: str):
+def move(directory: str, root: str, file: str) -> str:
     """
     Renames and moves a movie file from the source directory to the destination directory.
 
@@ -84,6 +83,7 @@ def move(directory: str, root: str, file: str):
     )
 
     if source_path == destination_path:
-        return
+        return destination_path
 
     move_file(source_path, destination_path)
+    return destination_path

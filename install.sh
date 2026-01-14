@@ -67,4 +67,37 @@ python -m pip install ${PIP_UPGRADE_ARGS[@]:+"${PIP_UPGRADE_ARGS[@]}"} -r "$REQU
 echo "Initializing config.ini (if needed)"
 python -c "import config; config.ensure_config_exists()"
 
+if [[ -t 0 ]] && [[ -t 1 ]] && [[ -f "$SCRIPT_DIR/generate_indexes.py" ]]; then
+  echo
+  read -r -p "Run index generation now? [y/N] " run_indexing
+  if [[ "${run_indexing,,}" == "y" || "${run_indexing,,}" == "yes" ]]; then
+    while true; do
+      echo "Accepted roots: <root with tv+movies>, <tv>, <tv/<Show>>, <movies>"
+      read -r -p "Enter folder to index (or 'q' to cancel): " media_root
+
+      if [[ -z "$media_root" ]]; then
+        echo "Please enter a folder path or 'q' to cancel."
+        continue
+      fi
+
+      if [[ "${media_root,,}" == "q" ]]; then
+        echo "Index generation cancelled."
+        break
+      fi
+
+      if python "$SCRIPT_DIR/generate_indexes.py" "$media_root"; then
+        break
+      fi
+
+      status=$?
+      if [[ $status -eq 2 ]]; then
+        echo "Invalid folder. Try again or enter 'q' to cancel."
+        continue
+      fi
+
+      echo "Index generation failed (exit code $status). Try again or enter 'q' to cancel."
+    done
+  fi
+fi
+
 echo "Done. Activate with: source venv/bin/activate"

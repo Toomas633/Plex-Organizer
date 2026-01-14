@@ -298,12 +298,22 @@ def _extract_embedded_subtitle_to_srt(
 
 
 def _handle_existing_language_tag(out_s_index, language, title_overrides):
+    """Apply an ISO-639-2 title override when the stream already has a language tag.
+
+    This is used when a subtitle stream has a valid language tag but an empty title;
+    Plex tends to display the title, so we set one derived from the language.
+    """
     lang2_existing = _normalize_language_tag_to_iso639_2(language)
     if lang2_existing:
         title_overrides[out_s_index] = lang2_existing
 
 
 def _handle_title_lang2(out_s_index, title, lang_overrides):
+    """Infer language from an existing title and populate *lang_overrides*.
+
+    Returns True when the title yields a language code and the caller can skip
+    further detection.
+    """
     title_lang2 = _lang2_from_title(title)
     if title_lang2:
         lang_overrides[out_s_index] = title_lang2
@@ -312,6 +322,7 @@ def _handle_title_lang2(out_s_index, title, lang_overrides):
 
 
 def _handle_tmp_srt(out_s_index, ffmpeg, video_path, lang_overrides, title_overrides):
+    """Extract stream to a temp SRT, detect language/SDH, and apply overrides."""
     tmp_srt = _extract_embedded_subtitle_to_srt(ffmpeg, video_path, out_s_index)
     if not tmp_srt:
         return
@@ -908,7 +919,17 @@ def _embed_subtitles(plan: SubtitleMergePlan) -> None:
             log_error(f"Failed to clean up temporary file '{tmp_path}': {e}")
 
 
-def merge_subtitles_in_directory(directory: str, root: str, files: list[str]):
+def _tag_embedded_subtitle_languages_for_videos(video_paths: list[str]) -> None:
+    for video_path in video_paths:
+        try:
+            if is_plex_folder(os_path.dirname(video_path)):
+                continue
+            _tag_embedded_subtitle_languages(video_path)
+        except OSError:
+            continue
+
+
+def merge_subtitles_in_directory(directory: str, video_paths: list[str]):
     """Discover and embed subtitles for videos under *directory*.
 
     This is a best-effort operation: failures are logged and will not raise.
@@ -917,16 +938,15 @@ def merge_subtitles_in_directory(directory: str, root: str, files: list[str]):
     if not get_enable_subtitle_embedding():
         return
 
-    if is_plex_folder(root):
+    if is_plex_folder(directory):
         return
-    video_files = [f for f in files if f.lower().endswith(VIDEO_EXTENSIONS)]
-    for f in video_files:
-        try:
-            _tag_embedded_subtitle_languages(os_path.join(root, f))
-        except OSError:
-            continue
 
-    plans = _discover_plans(directory)
+    log_debug(f"Starting subtitle merging scan under directory: {directory}")
+
+    _tag_embedded_subtitle_languages_for_videos(video_paths)
+
+    allowed = set(video_paths)
+    plans = [p for p in _discover_plans(directory) if p.video_path in allowed]
     try:
         for plan in plans:
             log_debug(

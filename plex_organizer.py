@@ -33,6 +33,12 @@ from utils import (
 from config import ensure_config_exists, get_enable_audio_tagging
 from audio import tag_audio_track_languages
 from subtitles import merge_subtitles_in_directory
+from indexing import (
+    mark_indexed,
+    should_index_video,
+    collect_indexed_videos,
+    index_root_for_path,
+)
 
 START_DIR = argv[1]
 TORRENT_HASH = argv[2] if len(argv) > 2 else None
@@ -59,7 +65,7 @@ def _get_lock():
             sleep(10)
 
 
-def _analyze_video_languages(root: str, files: list[str]):
+def _analyze_video_languages(root: str, video_files: list[str]):
     """Analyze and tag missing audio language metadata for video files.
 
     This step is enabled/disabled via config and skips Plex-managed folders and
@@ -72,14 +78,12 @@ def _analyze_video_languages(root: str, files: list[str]):
     if not get_enable_audio_tagging():
         return
 
-    for file in files:
-        if (
-            file.endswith(VIDEO_EXTENSIONS)
-            and not is_plex_folder(root)
-            and not is_script_temp_file(file)
-        ):
-            file_path = os_path.join(root, file)
-            tag_audio_track_languages(file_path)
+    for file in video_files:
+        if is_plex_folder(root) or is_script_temp_file(file):
+            continue
+
+        file_path = os_path.join(root, file)
+        tag_audio_track_languages(file_path)
 
 
 def _delete_unwanted_files(root: str, files: list[str]):
@@ -102,6 +106,7 @@ def _delete_unwanted_files(root: str, files: list[str]):
         if not is_script_temp_file(file):
             file_path = os_path.join(root, file)
             try:
+                log_debug(f"Deleting unwanted file: {file_path}")
                 remove(file_path)
             except OSError as e:
                 log_error(f"Failed to delete file {file_path}: {e}")
@@ -115,6 +120,7 @@ def _delete_unwanted_directories(root: str):
             os_path.normcase(unwanted) in folder_parts for unwanted in UNWANTED_FOLDERS
         ):
             try:
+                log_debug(f"Deleting unwanted folder: {folder}")
                 rmtree(folder)
             except OSError as e:
                 log_error(f"Failed to delete folder {folder}: {e}")
@@ -129,7 +135,7 @@ def _delete_empty_directories(directory: str):
                 rmdir(dir_path)
 
 
-def _move_directories(directory: str, root: str, files: list[str]):
+def _move_directories(directory: str, root: str, video_files: list[str]):
     """Move/rename video files found in *root*.
 
     Dispatches to the TV or Movie handler based on the current directory path.
@@ -140,25 +146,54 @@ def _move_directories(directory: str, root: str, files: list[str]):
         files: Filenames present in *root*.
     """
 
-    for file in files:
-        if (
-            file.endswith(VIDEO_EXTENSIONS)
-            and not is_plex_folder(root)
-            and not is_script_temp_file(file)
-        ):
-            if is_tv_dir(root):
-                tv_move(root, file)
-            else:
-                movie_move(directory, root, file)
+    def _move_one(file_name: str) -> str:
+        if is_tv_dir(root):
+            return tv_move(root, file_name)
+        return movie_move(directory, root, file_name)
+
+    def _try_mark(index_root: str, final_path: str) -> None:
+        try:
+            if should_index_video(index_root, final_path):
+                mark_indexed(index_root, final_path)
+        except OSError:
+            return
+
+    if is_plex_folder(root):
+        return
+
+    index_root = index_root_for_path(directory, root)
+    for file in video_files:
+        if is_script_temp_file(file):
+            continue
+
+        final_path = _move_one(file)
+        _try_mark(index_root, final_path)
+
+
+def _get_video_files_to_process(
+    root: str,
+    files: list[str],
+    indexed_videos: dict[str, bool],
+) -> list[str]:
+    return [
+        f
+        for f in files
+        if f.lower().endswith(VIDEO_EXTENSIONS)
+        and not indexed_videos.get(os_path.join(root, f), False)
+    ]
 
 
 def _process_directory(directory: str):
     """Run the full organizer pipeline for a single directory tree."""
+    indexed_videos = collect_indexed_videos(directory)
+    videos_to_process = [p for p, is_done in indexed_videos.items() if not is_done]
+    merge_subtitles_in_directory(directory, video_paths=videos_to_process)
+
     for root, _, files in walk(directory, topdown=False):
-        merge_subtitles_in_directory(directory, root, files)
-        _analyze_video_languages(root, files)
+        videos_to_process = _get_video_files_to_process(root, files, indexed_videos)
+        _analyze_video_languages(root, videos_to_process)
         _delete_unwanted_files(root, files)
-        _move_directories(directory, root, files)
+        _move_directories(directory, root, videos_to_process)
 
     _delete_empty_directories(directory)
 
