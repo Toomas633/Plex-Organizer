@@ -38,6 +38,7 @@ def ensure_config_exists():
         },
         "Subtitles": {
             "enable_subtitle_embedding": "true",
+            "analyze_embedded_subtitles": "false",
         },
     }
 
@@ -187,3 +188,9 @@ def get_qbittorrent_password():
     """Return the qBittorrent password from the config file."""
     config = _get_config()
     return config.get("qBittorrent", "password")
+
+
+def get_analyze_embedded_subtitles():
+    """Return True if analyzing embedded subtitles is enabled."""
+    config = _get_config()
+    return config.getboolean("Subtitles", "analyze_embedded_subtitles", fallback=False)

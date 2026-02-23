@@ -174,6 +174,7 @@ Key sections:
   - `whisper_model_size`: Whisper model size for `faster-whisper` (default `tiny`).
 - `[Subtitles]`
   - `enable_subtitle_embedding`: If `true`, embeds external subtitles and tags metadata before subtitle files/folders are removed.
+  - `analyze_embedded_subtitles`: If `true`, also analyzes already-embedded subtitle streams for missing/unknown language tags and writes detected language and SDH metadata back into the container. When `false` (default), only externally embedded subtitles are tagged.
 
 **NB!!** Make sure the qBittorrent `host` is correct. Torrent removal is best-effort: failures are logged and processing continues.
 

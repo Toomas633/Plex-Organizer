@@ -18,7 +18,7 @@ from tempfile import NamedTemporaryFile
 from typing import Tuple, Any, Dict, List, Optional, Sequence
 from langdetect import DetectorFactory, detect_langs
 from langdetect.lang_detect_exception import LangDetectException
-from config import get_enable_subtitle_embedding
+from config import get_analyze_embedded_subtitles, get_enable_subtitle_embedding
 from const import (
     ISO639_1_TO_2,
     TEXT_SUBTITLE_EXTENSIONS,
@@ -943,7 +943,8 @@ def merge_subtitles_in_directory(directory: str, video_paths: list[str]):
 
     log_debug(f"Starting subtitle merging scan under directory: {directory}")
 
-    _tag_embedded_subtitle_languages_for_videos(video_paths)
+    if get_analyze_embedded_subtitles():
+        _tag_embedded_subtitle_languages_for_videos(video_paths)
 
     allowed = set(video_paths)
     plans = [p for p in _discover_plans(directory) if p.video_path in allowed]

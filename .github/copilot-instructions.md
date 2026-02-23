@@ -72,6 +72,9 @@
   - Detects subtitle language (ISO 639-2) and SDH best-effort.
   - Embeds into the container via `ffmpeg`.
 - This runs before cleanup removes subtitle files/folders.
+- `[Subtitles] analyze_embedded_subtitles` (default `false`):
+  - When `true`, also probes already-embedded subtitle streams for missing/unknown language tags, extracts them to temp SRT, detects language + SDH via `langdetect`, and remuxes the tags back.
+  - When `false`, only externally embedded subtitles receive language/SDH tagging during the embed step.
 
 ## Developer workflows
 
