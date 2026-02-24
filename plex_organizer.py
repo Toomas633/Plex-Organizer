@@ -30,7 +30,10 @@ from utils import (
     is_tv_dir,
     is_main_folder,
 )
-from config import ensure_config_exists, get_enable_audio_tagging
+from config import (
+    ensure_config_exists,
+    get_enable_audio_tagging,
+)
 from audio import tag_audio_track_languages
 from subtitles import merge_subtitles_in_directory
 from indexing import (
@@ -156,7 +159,7 @@ def _move_directories(directory: str, root: str, video_files: list[str]):
             if should_index_video(index_root, final_path):
                 mark_indexed(index_root, final_path)
         except OSError:
-            return
+            pass
 
     if is_plex_folder(root):
         return
@@ -187,6 +190,7 @@ def _process_directory(directory: str):
     """Run the full organizer pipeline for a single directory tree."""
     indexed_videos = collect_indexed_videos(directory)
     videos_to_process = [p for p, is_done in indexed_videos.items() if not is_done]
+
     merge_subtitles_in_directory(directory, video_paths=videos_to_process)
 
     for root, _, files in walk(directory, topdown=False):

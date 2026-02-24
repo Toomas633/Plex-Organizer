@@ -12,8 +12,6 @@
 - [Usage](#usage)
   - [Manual running](#manual-running)
   - [Automated running](#automated-running)
-- [Dev Container (VS Code)](#dev-container-vs-code)
-- [Contributing](#contributing)
 - [License](#license)
 - [Issues and Feature Requests](#issues-and-feature-requests)
 
@@ -31,6 +29,7 @@ Plex Organizer is a Python-based utility designed to help manage and organize me
 - **Handle Plex:** Handles plex directories and optimized versions.
 - **Audio language tagging (optional)**: If enabled, detects missing audio track languages and writes ISO 639-2 tags into the container metadata (uses `ffprobe`/`ffmpeg` + `faster-whisper`).
 - **Subtitle embedding (optional)**: If enabled, embeds external subtitles into the video file and tags subtitle language/type metadata (uses `ffprobe`/`ffmpeg` + `langdetect`).
+- **Subtitle generation (optional)**: When set to `always` or `missing`, generates English subtitles via Whisper transcription/translation and embeds them into the container. Features include speaker-change detection, word-level timing, music note wrapping (`♪ lyrics ♪`), natural filler words preserved, profanity included, and smart SRT formatting (Netflix/broadcast standards).
 - **Config file:** Ini file for common configuration options that can be set, disabled or enabled (_beware, some settings might not do anything if already run and info removed from file names, for example turning off quality inclusion and then enabling it_)
 
 Notes:
@@ -175,8 +174,7 @@ Key sections:
 - `[Subtitles]`
   - `enable_subtitle_embedding`: If `true`, embeds external subtitles and tags metadata before subtitle files/folders are removed.
   - `analyze_embedded_subtitles`: If `true`, also analyzes already-embedded subtitle streams for missing/unknown language tags and writes detected language and SDH metadata back into the container. When `false` (default), only externally embedded subtitles are tagged.
-
-**NB!!** Make sure the qBittorrent `host` is correct. Torrent removal is best-effort: failures are logged and processing continues.
+    **NB!!** Make sure the qBittorrent `host` is correct. Torrent removal is best-effort: failures are logged and processing continues.
 
 ## Usage
 
@@ -213,30 +211,6 @@ Example:
 ![Example config image](.github/images/image.png)
 
 For performance reasons it is recommended that **%D** is used instead of entire directory like `/mnt/share`. This way only the specific folder will be organized not entire library on each call. Putting your root directory like `/mnt/share` will remove the torrent with the given hash and process the directories `/mnt/media/tv` and `/mnt/media/movies`.
-
-## Dev Container (VS Code)
-
-This repo includes a VS Code Dev Container configuration.
-
-1. Install Docker (Docker Desktop) and VS Code.
-2. In VS Code: `Dev Containers: Reopen in Container`.
-
-The container includes `ffmpeg` (for `faster-whisper`) and will create/initialize `venv/` + install `requirements.txt` on first create.
-It does not auto-run `test.sh`.
-
-For the same quick verification flow as `test.bat` (but for Linux/Dev Container), run:
-
-```bash
-bash ./test.sh
-```
-
-## Contributing
-
-Contributions are welcome! Please follow these steps:
-
-Fork the repository.
-Create a new branch for your feature or bug fix.Commit your changes and push the branch.
-Open a pull request.
 
 ## License
 

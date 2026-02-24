@@ -38,7 +38,7 @@ def ensure_config_exists():
         },
         "Subtitles": {
             "enable_subtitle_embedding": "true",
-            "analyze_embedded_subtitles": "false",
+            "analyze_embedded_subtitles": "true",
         },
     }
 

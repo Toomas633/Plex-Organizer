@@ -8,12 +8,9 @@ Plex-managed folders are always skipped.
 """
 
 from __future__ import annotations
-from json import JSONDecodeError, loads
 from hashlib import sha256
-from os import listdir, path as os_path, remove, replace, stat, utime, walk
+from os import listdir, path as os_path, remove, walk
 from re import sub as re_sub, MULTILINE, search, findall
-from shutil import which
-from subprocess import CompletedProcess, run
 from tempfile import NamedTemporaryFile
 from typing import Tuple, Any, Dict, List, Optional, Sequence
 from langdetect import DetectorFactory, detect_langs
@@ -26,6 +23,16 @@ from const import (
     SUBTITLE_EXTENSIONS,
 )
 from dataclass import SubtitleMergePlan
+from ffmpeg_utils import (
+    build_ffmpeg_base_cmd,
+    create_temp_output,
+    ffmpeg_input_cmd,
+    probe_streams_json,
+    probe_subtitle_stream_count,
+    replace_and_restore_timestamps,
+    run_cmd,
+    which_or_log,
+)
 from log import log_error, log_debug
 from utils import is_plex_folder
 
@@ -148,96 +155,6 @@ def _ass_dialogue_to_payload(line: str) -> str:
     return parts[9] if len(parts) == 10 else line
 
 
-def _which_or_log(exe: str) -> str | None:
-    """Resolve an executable on PATH; log an error if missing."""
-    resolved = which(exe)
-    if not resolved:
-        log_error(
-            f"Missing required tool '{exe}'. Install ffmpeg and ensure '{exe}' is on PATH."
-        )
-    return resolved
-
-
-def _run(cmd: List[str]) -> CompletedProcess[str]:
-    """Run a subprocess command and capture stdout/stderr without raising."""
-    return run(
-        cmd,
-        text=True,
-        capture_output=True,
-        check=False,
-        encoding="utf-8",
-        errors="replace",
-    )
-
-
-def _probe_embedded_subtitle_stream_count(video_path: str) -> int:
-    """Return the number of subtitle streams already embedded in a container."""
-    ffprobe = which("ffprobe")
-    if not ffprobe:
-        log_error(
-            "Missing required tool 'ffprobe'. Install ffmpeg and ensure 'ffprobe' is on PATH."
-        )
-        raise RuntimeError("ffprobe is required for subtitle merging")
-
-    proc = _run(
-        [
-            ffprobe,
-            "-v",
-            "error",
-            "-select_streams",
-            "s",
-            "-show_entries",
-            "stream=index",
-            "-of",
-            "csv=p=0",
-            video_path,
-        ]
-    )
-    if proc.returncode != 0:
-        log_error(f"ffprobe failed for '{video_path}':\n{proc.stderr.strip()}")
-        raise RuntimeError(f"ffprobe failed for '{video_path}'")
-
-    lines = [ln for ln in (proc.stdout or "").splitlines() if ln.strip()]
-    return len(lines)
-
-
-def _probe_subtitle_streams(video_path: str) -> List[Dict[str, Any]]:
-    """Probe subtitle streams (order-preserving) from a container using ffprobe."""
-    ffprobe = which("ffprobe")
-    if not ffprobe:
-        log_error(
-            "Missing required tool 'ffprobe'. Install ffmpeg and ensure 'ffprobe' is on PATH."
-        )
-        return []
-
-    proc = _run(
-        [
-            ffprobe,
-            "-v",
-            "error",
-            "-print_format",
-            "json",
-            "-show_streams",
-            "-select_streams",
-            "s",
-            video_path,
-        ]
-    )
-    if proc.returncode != 0:
-        log_error(f"ffprobe failed for '{video_path}':\n{proc.stderr.strip()}")
-        return []
-
-    try:
-        payload: Dict[str, Any] = loads(proc.stdout or "{}")
-    except (JSONDecodeError, TypeError):
-        return []
-
-    streams = payload.get("streams") or []
-    if not isinstance(streams, list):
-        return []
-    return [s for s in streams if isinstance(s, dict)]
-
-
 def _subtitle_language_needs_tag(language: Optional[str]) -> bool:
     if not language:
         return True
@@ -272,15 +189,9 @@ def _extract_embedded_subtitle_to_srt(
     with NamedTemporaryFile(mode="wb", delete=False, suffix=".srt") as tmp:
         tmp_path = tmp.name
 
-    proc = _run(
+    proc = run_cmd(
         [
-            ffmpeg,
-            "-y",
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-i",
-            video_path,
+            *ffmpeg_input_cmd(ffmpeg, video_path),
             "-map",
             f"0:s:{subtitle_stream_index}",
             "-c:s",
@@ -367,11 +278,11 @@ def _tag_embedded_subtitle_languages(video_path: str) -> None:
     if not os_path.isfile(video_path):
         return
 
-    ffmpeg = _which_or_log("ffmpeg")
+    ffmpeg = which_or_log("ffmpeg")
     if not ffmpeg:
         return
 
-    streams = _probe_subtitle_streams(video_path)
+    streams = probe_streams_json(video_path)
     if not streams:
         return
 
@@ -380,26 +291,9 @@ def _tag_embedded_subtitle_languages(video_path: str) -> None:
     if not lang_overrides and not title_overrides:
         return
 
-    st = stat(video_path)
-    tmp_out = _create_temp_output_path(video_path)
+    tmp_out = create_temp_output(video_path, prefix=".submerge.")
     try:
-        cmd: List[str] = [
-            ffmpeg,
-            "-y",
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-i",
-            video_path,
-            "-map",
-            "0",
-            "-c",
-            "copy",
-            "-map_metadata",
-            "0",
-            "-map_chapters",
-            "0",
-        ]
+        cmd = build_ffmpeg_base_cmd(ffmpeg, video_path, [])
 
         for out_s_index, lang2 in sorted(lang_overrides.items()):
             cmd.extend([f"-metadata:s:s:{out_s_index}", f"language={lang2}"])
@@ -407,7 +301,7 @@ def _tag_embedded_subtitle_languages(video_path: str) -> None:
             cmd.extend([f"-metadata:s:s:{out_s_index}", f"title={title}"])
         cmd.append(tmp_out)
 
-        proc = _run(cmd)
+        proc = run_cmd(cmd)
         if proc.returncode != 0:
             log_error(
                 (
@@ -417,8 +311,7 @@ def _tag_embedded_subtitle_languages(video_path: str) -> None:
             )
             return
 
-        replace(tmp_out, video_path)
-        utime(video_path, ns=(st.st_atime_ns, st.st_mtime_ns))
+        replace_and_restore_timestamps(tmp_out, video_path)
     finally:
         try:
             if os_path.exists(tmp_out):
@@ -777,21 +670,6 @@ def _embeddable_subtitles_for_video(
     return (is_mp4, existing_subs)
 
 
-def _create_temp_output_path(video_path: str) -> str:
-    """Create a temp output file path next to *video_path* and return it."""
-    out_dir = os_path.dirname(video_path)
-    out_suffix = os_path.splitext(video_path)[1]
-
-    with NamedTemporaryFile(
-        mode="wb",
-        delete=False,
-        dir=out_dir,
-        prefix=".submerge.",
-        suffix=out_suffix,
-    ) as tmp:
-        return tmp.name
-
-
 def _build_subtitle_embed_cmd(
     ffmpeg: str,
     video_path: str,
@@ -800,39 +678,8 @@ def _build_subtitle_embed_cmd(
     is_mp4: bool,
 ) -> List[str]:
     """Build an ffmpeg command to embed subtitle inputs into a container."""
-    existing_embedded_sub_count = _probe_embedded_subtitle_stream_count(video_path)
-
-    cmd: List[str] = [
-        ffmpeg,
-        "-y",
-        "-hide_banner",
-        "-loglevel",
-        "error",
-        "-i",
-        video_path,
-    ]
-
-    for sub in subtitle_paths:
-        cmd.extend(["-i", sub])
-
-    cmd.extend(["-map", "0"])
-    for i in range(len(subtitle_paths)):
-        cmd.extend(["-map", str(i + 1)])
-
-    cmd.extend(
-        [
-            "-c:v",
-            "copy",
-            "-c:a",
-            "copy",
-            "-map_metadata",
-            "0",
-            "-map_chapters",
-            "0",
-            "-c:s",
-            "copy",
-        ]
-    )
+    existing_embedded_sub_count = probe_subtitle_stream_count(video_path)
+    cmd = build_ffmpeg_base_cmd(ffmpeg, video_path, subtitle_paths)
 
     if is_mp4:
         end = existing_embedded_sub_count + len(subtitle_paths)
@@ -881,18 +728,17 @@ def _embed_subtitles(plan: SubtitleMergePlan) -> None:
     if not existing_subs:
         return
 
-    ffmpeg = _which_or_log("ffmpeg")
+    ffmpeg = which_or_log("ffmpeg")
     if not ffmpeg:
         return
 
-    st = stat(plan.video_path)
-    tmp_path = _create_temp_output_path(plan.video_path)
+    tmp_path = create_temp_output(plan.video_path, prefix=".submerge.")
 
     try:
         cmd = _build_subtitle_embed_cmd(
             ffmpeg, plan.video_path, existing_subs, tmp_path, is_mp4
         )
-        proc = _run(cmd)
+        proc = run_cmd(cmd)
         if proc.returncode != 0:
             log_error(
                 (
@@ -902,8 +748,7 @@ def _embed_subtitles(plan: SubtitleMergePlan) -> None:
             )
             return
 
-        replace(tmp_path, plan.video_path)
-        utime(plan.video_path, ns=(st.st_atime_ns, st.st_mtime_ns))
+        replace_and_restore_timestamps(tmp_path, plan.video_path)
 
         _delete_paths_best_effort(existing_subs)
     except RuntimeError as e:

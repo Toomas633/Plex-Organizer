@@ -106,6 +106,44 @@ def mark_indexed(index_root: str, file_path: str) -> None:
     _write_index(idx_path, payload)
 
 
+def _is_valid_tv_layout(index_root: str, file_path: str) -> bool:
+    """Return True if *file_path* matches the expected TV layout under *index_root*."""
+    show_root = find_corrected_directory(index_root)
+    if os_path.normpath(show_root) != os_path.normpath(index_root):
+        return False
+
+    if find_corrected_directory(os_path.dirname(file_path)) != show_root:
+        return False
+
+    season_dir = os_path.basename(os_path.dirname(file_path))
+    season_match = TV_CORRECT_SEASON_RE.match(season_dir)
+    if not season_match:
+        return False
+    season_folder = season_match.group(1)
+
+    file_name = os_path.basename(file_path)
+    show_title = capitalize(os_path.basename(show_root))
+    prefix = f"{show_title} "
+    if not file_name.startswith(prefix):
+        return False
+
+    name_match = TV_CORRECT_NAME_RE.match(file_name)
+    if not name_match:
+        return False
+
+    return name_match.group(1) == season_folder
+
+
+def _is_valid_movie_layout(index_root: str, file_path: str) -> bool:
+    """Return True if *file_path* matches the expected movie layout under *index_root*."""
+    movies_root = find_corrected_directory(index_root)
+    if os_path.normpath(movies_root) != os_path.normpath(index_root):
+        return False
+    if os_path.normpath(os_path.dirname(file_path)) != os_path.normpath(index_root):
+        return False
+    return bool(MOVIE_CORRECT_NAME_RE.match(os_path.basename(file_path)))
+
+
 def should_index_video(index_root: str, file_path: str) -> bool:
     """Return True only when a video is already in the organizer's final layout.
 
@@ -122,39 +160,9 @@ def should_index_video(index_root: str, file_path: str) -> bool:
         return False
 
     if is_tv_dir(index_root):
-        show_root = find_corrected_directory(index_root)
-        if os_path.normpath(show_root) != os_path.normpath(index_root):
-            return False
+        return _is_valid_tv_layout(index_root, file_path)
 
-        if find_corrected_directory(os_path.dirname(file_path)) != show_root:
-            return False
-
-        season_dir = os_path.basename(os_path.dirname(file_path))
-        season_match = TV_CORRECT_SEASON_RE.match(season_dir)
-        if not season_match:
-            return False
-        season_folder = season_match.group(1)
-
-        file_name = os_path.basename(file_path)
-        show_title = capitalize(os_path.basename(show_root))
-        prefix = f"{show_title} "
-        if not file_name.startswith(prefix):
-            return False
-
-        name_match = TV_CORRECT_NAME_RE.match(file_name)
-        if not name_match:
-            return False
-
-        season_in_name = name_match.group(1)
-        return season_in_name == season_folder
-
-    movies_root = find_corrected_directory(index_root)
-    if os_path.normpath(movies_root) != os_path.normpath(index_root):
-        return False
-    if os_path.normpath(os_path.dirname(file_path)) != os_path.normpath(index_root):
-        return False
-
-    return bool(MOVIE_CORRECT_NAME_RE.match(os_path.basename(file_path)))
+    return _is_valid_movie_layout(index_root, file_path)
 
 
 def _index_root_for_video_path(directory: str, video_path: str) -> str:

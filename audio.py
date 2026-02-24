@@ -8,60 +8,23 @@ written back into the container as ISO 639-2 language tags.
 
 from __future__ import annotations
 from json import loads
-from os import path as os_path, stat, replace, utime
-from shutil import which
-from subprocess import run, CompletedProcess
+from os import path as os_path
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional, Tuple
 from config import get_cpu_threads
 from const import ISO639_1_TO_2
 from dataclass import AudioStream
+from ffmpeg_utils import (
+    WAV_OUTPUT_ARGS,
+    build_ffmpeg_base_cmd,
+    probe_streams_json,
+    replace_and_restore_timestamps,
+    run_cmd,
+    which_or_raise,
+)
 from log import log_error, log_debug
 from utils import is_plex_folder
 from whisper_detector import WhisperDetector
-
-
-def _which_or_raise(exe: str) -> str:
-    """Resolve an executable on PATH or raise.
-
-    Args:
-        exe: Executable name to locate (e.g., "ffprobe", "ffmpeg").
-
-    Returns:
-        The resolved absolute path to the executable.
-
-    Raises:
-        RuntimeError: If the executable is not found on PATH.
-    """
-    resolved = which(exe)
-    if not resolved:
-        raise RuntimeError(
-            f"Missing required tool '{exe}'. Install ffmpeg and ensure '{exe}' is on PATH."
-        )
-    return resolved
-
-
-def _run(cmd: List[str]) -> CompletedProcess[str]:
-    """Run a subprocess command and capture output.
-
-    Args:
-        cmd: Command argv list.
-
-    Returns:
-        CompletedProcess with stdout/stderr captured as text.
-
-    Notes:
-        This helper never raises on non-zero exit codes; callers must check
-        returncode and handle stderr.
-    """
-    return run(
-        cmd,
-        text=True,
-        capture_output=True,
-        check=False,
-        encoding="utf-8",
-        errors="replace",
-    )
 
 
 def _audio_stream_from_ffprobe(audio_index: int, stream: Dict[str, Any]) -> AudioStream:
@@ -114,25 +77,9 @@ def _probe_audio_streams(video_path: str) -> List[AudioStream]:
     if not os_path.isfile(video_path):
         raise FileNotFoundError(video_path)
 
-    _which_or_raise("ffprobe")
-    proc = _run(
-        [
-            "ffprobe",
-            "-v",
-            "error",
-            "-print_format",
-            "json",
-            "-show_streams",
-            "-select_streams",
-            "a",
-            video_path,
-        ]
-    )
-    if proc.returncode != 0:
-        raise RuntimeError(f"ffprobe failed for '{video_path}':\n{proc.stderr.strip()}")
-
-    payload: Dict[str, Any] = loads(proc.stdout or "{}")
-    streams: List[Dict[str, Any]] = payload.get("streams", [])
+    streams = probe_streams_json(video_path, "a")
+    if not streams:
+        which_or_raise("ffprobe")
 
     return [_audio_stream_from_ffprobe(i, s) for i, s in enumerate(streams)]
 
@@ -149,8 +96,8 @@ def _probe_duration_seconds(video_path: str) -> Optional[float]:
     if not os_path.isfile(video_path):
         raise FileNotFoundError(video_path)
 
-    _which_or_raise("ffprobe")
-    proc = _run(
+    which_or_raise("ffprobe")
+    proc = run_cmd(
         [
             "ffprobe",
             "-v",
@@ -381,24 +328,11 @@ def _apply_language_metadata(
     if not updates:
         return
 
-    _which_or_raise("ffmpeg")
-    in_stat = stat(video_path)
+    ffmpeg = which_or_raise("ffmpeg")
     base, ext = os_path.splitext(video_path)
     tmp_out = f"{base}.langtag.tmp{ext}"
 
-    cmd: List[str] = [
-        "ffmpeg",
-        "-hide_banner",
-        "-loglevel",
-        "error",
-        "-y",
-        "-i",
-        video_path,
-        "-map",
-        "0",
-        "-c",
-        "copy",
-    ]
+    cmd = build_ffmpeg_base_cmd(ffmpeg, video_path, [])
 
     for stream, lang, _conf in detections:
         if not lang:
@@ -407,18 +341,13 @@ def _apply_language_metadata(
 
     cmd.append(tmp_out)
 
-    proc = _run(cmd)
+    proc = run_cmd(cmd)
     if proc.returncode != 0:
         raise RuntimeError(
             f"ffmpeg failed while writing language tags to '{video_path}':\n{proc.stderr.strip()}"
         )
 
-    replace(tmp_out, video_path)
-
-    try:
-        utime(video_path, (in_stat.st_atime, in_stat.st_mtime))
-    except OSError:
-        pass
+    replace_and_restore_timestamps(tmp_out, video_path)
 
 
 def _normalize_language_to_iso639_2(code: Optional[str]) -> Optional[str]:
@@ -459,7 +388,7 @@ def _extract_audio_sample(
     Raises:
         RuntimeError: If ffmpeg fails to extract the sample.
     """
-    _which_or_raise("ffmpeg")
+    which_or_raise("ffmpeg")
 
     cmd = [
         "ffmpeg",
@@ -475,18 +404,10 @@ def _extract_audio_sample(
         f"0:a:{audio_index}",
         "-t",
         "20",
-        "-vn",
-        "-sn",
-        "-dn",
-        "-ac",
-        "1",
-        "-ar",
-        "16000",
-        "-f",
-        "wav",
+        *WAV_OUTPUT_ARGS,
         wav_path,
     ]
-    proc = _run(cmd)
+    proc = run_cmd(cmd)
     if proc.returncode != 0:
         raise RuntimeError(
             (

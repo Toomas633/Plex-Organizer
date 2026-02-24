@@ -100,7 +100,9 @@ def _directories_to_scan(start_dir: str) -> list[str]:
         return [start_dir]
 
     raise ValueError(
-        "Invalid root. Provide either a folder containing BOTH 'tv' and 'movies', or the 'tv' folder, or a 'tv/<Show>' folder, or the 'movies' folder."
+        "Invalid root. Provide either a folder containing BOTH"
+        " 'tv' and 'movies', or the 'tv' folder,"
+        " or a 'tv/<Show>' folder, or the 'movies' folder."
     )
 
 
@@ -272,7 +274,10 @@ def main() -> int:
     )
     parser.add_argument(
         "root",
-        help="Folder containing BOTH tv+movies, or the tv folder, or tv/<Show>, or the movies folder",
+        help=(
+            "Folder containing BOTH tv+movies, or the tv folder,"
+            " or tv/<Show>, or the movies folder"
+        ),
     )
 
     args = parser.parse_args()
