@@ -39,6 +39,8 @@ def ensure_config_exists():
         "Subtitles": {
             "enable_subtitle_embedding": "true",
             "analyze_embedded_subtitles": "true",
+            "fetch_subtitles": "eng",
+            "subtitle_providers": "opensubtitles, podnapisi, gestdown, tvsubtitles",
         },
     }
 
@@ -194,3 +196,31 @@ def get_analyze_embedded_subtitles():
     """Return True if analyzing embedded subtitles is enabled."""
     config = _get_config()
     return config.getboolean("Subtitles", "analyze_embedded_subtitles", fallback=False)
+
+
+def get_fetch_subtitles() -> list[str]:
+    """Return the list of ISO 639-2 language codes to fetch, or empty if disabled.
+
+    The config value is a comma-separated string of 3-letter language codes
+    (e.g. ``eng, est``).  An empty value disables subtitle fetching.
+    """
+    config = _get_config()
+    raw = config.get("Subtitles", "fetch_subtitles", fallback="").strip()
+    if not raw:
+        return []
+    return [code.strip().lower() for code in raw.split(",") if code.strip()]
+
+
+def get_subtitle_providers() -> list[str]:
+    """Return the list of subtitle provider names for subliminal.
+
+    The config value is a comma-separated string of provider names
+    (e.g. ``gestdown, opensubtitlescom, podnapisi, tvsubtitles``).
+    An empty value falls back to the built-in default list.
+    """
+    default = "opensubtitles, podnapisi, gestdown, tvsubtitles"
+    config = _get_config()
+    raw = config.get("Subtitles", "subtitle_providers", fallback=default).strip()
+    if not raw:
+        raw = default
+    return [p.strip().lower() for p in raw.split(",") if p.strip()]

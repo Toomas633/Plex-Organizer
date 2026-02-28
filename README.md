@@ -29,7 +29,7 @@ Plex Organizer is a Python-based utility designed to help manage and organize me
 - **Handle Plex:** Handles plex directories and optimized versions.
 - **Audio language tagging (optional)**: If enabled, detects missing audio track languages and writes ISO 639-2 tags into the container metadata (uses `ffprobe`/`ffmpeg` + `faster-whisper`).
 - **Subtitle embedding (optional)**: If enabled, embeds external subtitles into the video file and tags subtitle language/type metadata (uses `ffprobe`/`ffmpeg` + `langdetect`).
-- **Subtitle generation (optional)**: When set to `always` or `missing`, generates English subtitles via Whisper transcription/translation and embeds them into the container. Features include speaker-change detection, word-level timing, music note wrapping (`♪ lyrics ♪`), natural filler words preserved, profanity included, and smart SRT formatting (Netflix/broadcast standards).
+- **Subtitle fetching (optional)**: If enabled, searches free online subtitle providers (OpenSubtitles, Podnapisi, Gestdown, TVsubtitles) for English subtitles and embeds them into videos that have no embedded subtitle streams.
 - **Config file:** Ini file for common configuration options that can be set, disabled or enabled (_beware, some settings might not do anything if already run and info removed from file names, for example turning off quality inclusion and then enabling it_)
 
 Notes:
@@ -174,6 +174,7 @@ Key sections:
 - `[Subtitles]`
   - `enable_subtitle_embedding`: If `true`, embeds external subtitles and tags metadata before subtitle files/folders are removed.
   - `analyze_embedded_subtitles`: If `true`, also analyzes already-embedded subtitle streams for missing/unknown language tags and writes detected language and SDH metadata back into the container. When `false` (default), only externally embedded subtitles are tagged.
+  - `fetch_subtitles`: Comma-separated list of ISO 639-2 language codes to fetch (e.g. `eng` or `eng, est`). Leave empty to disable. Default: `eng`.
     **NB!!** Make sure the qBittorrent `host` is correct. Torrent removal is best-effort: failures are logged and processing continues.
 
 ## Usage

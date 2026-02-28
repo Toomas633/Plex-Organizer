@@ -62,6 +62,7 @@ log.py              – Logging (errors, duplicates, debug)
 tv.py               – TV show rename & move logic
 movie.py            – Movie rename & move logic
 subtitles.py        – External subtitle discovery & embedding
+fetch_subs.py       – Fetch missing subtitles from online providers
 audio.py            – Audio stream language tagging
 whisper_detector.py – Whisper language detection wrapper
 indexing.py         – Per-library index (.plex_organizer.index)
@@ -74,11 +75,12 @@ dataclass.py        – Shared data classes
 `plex_organizer.py` runs these steps in order for each directory:
 
 1. **Subtitle embedding** — embed external subtitles into video containers.
-2. **Audio language tagging** — detect and write missing audio language metadata.
-3. **Cleanup** — delete unwanted files and folders (aggressive; see below).
-4. **Rename & move** — place videos into the final TV/Movie layout.
-5. **Delete empty folders**.
-6. **(Optional) Torrent removal** via qBittorrent API.
+2. **Subtitle fetching** — download and embed subtitles from online providers for videos without any.
+3. **Audio language tagging** — detect and write missing audio language metadata.
+4. **Cleanup** — delete unwanted files and folders (aggressive; see below).
+5. **Rename & move** — place videos into the final TV/Movie layout.
+6. **Delete empty folders**.
+7. **(Optional) Torrent removal** via qBittorrent API.
 
 ### Cleanup behavior
 

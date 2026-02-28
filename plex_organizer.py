@@ -12,11 +12,19 @@ folder containing ``tv/`` and/or ``movies/``), and performs these steps:
 It can also remove a completed torrent from qBittorrent when a torrent hash is provided.
 """
 
-from os import walk, remove, listdir, rmdir, path as os_path, sep as os_sep
+from os import walk, remove, listdir, rmdir, path as os_path, sep as os_sep, environ
 from fcntl import flock, LOCK_EX, LOCK_NB
 from time import sleep
 from sys import argv, exit as sys_exit
 from shutil import rmtree
+from warnings import filterwarnings
+from logging import getLogger, ERROR
+
+filterwarnings("ignore", message=".*doesn't match a supported version")
+environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+getLogger("huggingface_hub").setLevel(ERROR)
+
+# pylint: disable=wrong-import-position
 from log import log_error, check_clear_log, log_debug
 from qb import remove_torrent
 from tv import move as tv_move
@@ -36,12 +44,15 @@ from config import (
 )
 from audio import tag_audio_track_languages
 from subtitles import merge_subtitles_in_directory
+from fetch_subs import fetch_subtitles_in_directory
 from indexing import (
     mark_indexed,
     should_index_video,
     collect_indexed_videos,
     index_root_for_path,
 )
+
+# pylint: enable=wrong-import-position
 
 START_DIR = argv[1]
 TORRENT_HASH = argv[2] if len(argv) > 2 else None
@@ -192,6 +203,7 @@ def _process_directory(directory: str):
     videos_to_process = [p for p, is_done in indexed_videos.items() if not is_done]
 
     merge_subtitles_in_directory(directory, video_paths=videos_to_process)
+    fetch_subtitles_in_directory(directory, video_paths=videos_to_process)
 
     for root, _, files in walk(directory, topdown=False):
         videos_to_process = _get_video_files_to_process(root, files, indexed_videos)

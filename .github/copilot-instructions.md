@@ -4,6 +4,7 @@
 
 - Entry point is `plex_organizer.py`: acquires a best-effort single-instance lock, then orchestrates:
   - (Optional) subtitle embedding into containers
+  - (Optional) subtitle fetching from online providers
   - (Optional) audio-language tagging
   - Aggressive cleanup (delete unwanted files/folders)
   - Rename + move into final TV/Movie layout
@@ -18,6 +19,7 @@
   - Helpers in `utils.py` (duplicate handling, capitalization rules, "Plex Versions" detection, start-dir mode detection).
   - Logging in `log.py` (errors + duplicates) controlled by `config.ini`.
   - Subtitle embedding in `subtitles.py` (enabled by config).
+  - Subtitle fetching in `fetch_subs.py` (controlled by `fetch_subtitles` config).
   - Indexing in `indexing.py` via `.plex_organizer.index` files.
 
 ## Cleanup behavior (important)
@@ -75,6 +77,16 @@
 - `[Subtitles] analyze_embedded_subtitles` (default `false`):
   - When `true`, also probes already-embedded subtitle streams for missing/unknown language tags, extracts them to temp SRT, detects language + SDH via `langdetect`, and remuxes the tags back.
   - When `false`, only externally embedded subtitles receive language/SDH tagging during the embed step.
+
+## Subtitle fetching
+
+- Controlled by `[Subtitles] fetch_subtitles` (default `eng`).
+  - Value is a comma-separated list of ISO 639-2 language codes (e.g. `eng, est`). Empty disables fetching.
+- Implemented in `fetch_subs.py`:
+  - Uses `subliminal` to search free online providers (OpenSubtitles, Podnapisi, Gestdown, TVsubtitles).
+  - Only fetches languages that are **not** already present as embedded subtitle streams (runs after subtitle embedding).
+  - Downloads best-matching SRT for each missing language, embeds via `ffmpeg`, then cleans up.
+  - Best-effort: failures are logged; processing continues.
 
 ## Developer workflows
 
