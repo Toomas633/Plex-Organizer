@@ -33,7 +33,6 @@ plex_organizer/
 ├── __init__.py
 ├── __main__.py          # CLI entrypoint (plex-organizer / python -m plex_organizer)
 ├── _paths.py            # data-directory resolution (config, logs, lock file)
-├── cli_generate_indexes.py  # plex-organizer-index CLI
 ├── config.py            # config.ini access & auto-management
 ├── const.py             # shared constants (extensions, folders, ISO mappings)
 ├── dataclass.py         # shared data classes
@@ -48,6 +47,10 @@ plex_organizer/
 │   ├── __init__.py
 │   ├── tagging.py       # audio stream language tagging
 │   └── whisper.py       # faster-whisper language detection
+├── cli/
+│   ├── __init__.py
+│   ├── generate_indexes.py  # plex-organizer-index CLI
+│   └── kill.py              # plex-organizer-kill CLI
 └── subs/
     ├── __init__.py
     ├── embedding.py     # external subtitle embedding + metadata

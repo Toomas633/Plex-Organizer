@@ -3,7 +3,7 @@
 This module contains the index-generation logic used by the
 ``plex-organizer-index`` console script.  It can also be invoked directly::
 
-    python -m plex_organizer.cli_generate_indexes /path/to/media/root
+    python -m plex_organizer.cli.generate_indexes /path/to/media/root
 
 Accepted inputs:
 
@@ -25,15 +25,15 @@ from os import walk
 from os import path as os_path
 from typing import Dict, Set
 
-from .config import ensure_config_exists
-from .const import INDEX_FILENAME, VIDEO_EXTENSIONS
-from .dataclass import IndexSummary
-from .indexing import (
+from ..config import ensure_config_exists
+from ..const import INDEX_FILENAME, VIDEO_EXTENSIONS
+from ..dataclass import IndexSummary
+from ..indexing import (
     index_root_for_path,
     mark_indexed,
     should_index_video,
 )
-from .utils import is_plex_folder, is_script_temp_file
+from ..utils import is_plex_folder, is_script_temp_file
 
 
 def _rel_key(index_root: str, file_path: str) -> str:
