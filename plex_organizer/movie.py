@@ -6,9 +6,9 @@ and logging errors or duplicates.
 
 from os import path as os_path
 from re import match as re_match
-from log import log_error
-from const import MOVIE_CORRECT_NAME_RE
-from utils import move_file, create_name, capitalize, find_corrected_directory
+from .log import log_error
+from .const import MOVIE_CORRECT_NAME_RE
+from .utils import move_file, create_name, capitalize, find_corrected_directory
 
 
 def _create_name(file: str) -> str:

@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "plex-organizer"
+version = "1.0.0"
+description = "Automated media file renaming, organization and metadata tagging for Plex."
+readme = "README.md"
+license = {text = "GPL-3.0-only"}
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.32.5",
+    "chardet>=5.0.0",
+    "faster-whisper>=1.2.1",
+    "langdetect>=1.0.9",
+    "subliminal>=2.6.0",
+    "ffsubsync>=0.4.25",
+    "static-ffmpeg>=2.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=26.1.0",
+    "pylint>=4.0.5",
+]
+
+[project.scripts]
+plex-organizer = "plex_organizer.__main__:main"
+plex-organizer-index = "plex_organizer.cli_generate_indexes:main"
+
+[tool.setuptools.packages.find]
+include = ["plex_organizer*"]

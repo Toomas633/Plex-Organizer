@@ -6,15 +6,16 @@ Provides functions to log messages, errors, and duplicate file events to a log f
 
 from os import path as os_path, makedirs
 from datetime import datetime
-from config import (
+from .config import (
     get_clear_log,
     get_log_file,
     get_enable_logging,
     get_logging_level,
     get_timestamped_log_files,
 )
+from ._paths import data_dir
 
-SCRIPT_DIR = os_path.dirname(os_path.abspath(__file__))
+SCRIPT_DIR = data_dir()
 
 
 def _log_message(level: str, message: str):

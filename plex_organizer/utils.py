@@ -3,8 +3,8 @@
 from os import path as os_path, sep as os_sep, listdir, remove
 from shutil import move
 from typing import List
-from log import log_error, log_duplicate
-from config import get_delete_duplicates, get_include_quality, get_capitalize
+from .log import log_error, log_duplicate
+from .config import get_delete_duplicates, get_include_quality, get_capitalize
 
 
 def is_plex_folder(path: str):
@@ -124,6 +124,26 @@ def is_main_folder(start: str):
     for part in find_folders(start):
         folders.append(part.split(os_sep)[-1])
     return "movies" in folders or "tv" in folders
+
+
+def is_media_directory(start: str):
+    """
+    Check if the directory is a recognised media directory.
+
+    A directory is recognised when it is a main folder (contains ``tv/`` or
+    ``movies/`` subfolders) **or** when its path already contains ``tv`` or
+    ``movies`` as a path component.
+
+    Args:
+        start (str): The directory to check.
+
+    Returns:
+        bool: True if the directory is a recognised media directory.
+    """
+    if is_main_folder(start):
+        return True
+    parts = [p.lower() for p in start.split(os_sep)]
+    return "tv" in parts or "movies" in parts
 
 
 def is_script_temp_file(file_name: str):

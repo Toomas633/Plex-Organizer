@@ -4,49 +4,63 @@ This script walks a target directory (either a single torrent save folder, or a 
 folder containing ``tv/`` and/or ``movies/``), and performs these steps:
 
 - Optionally embeds external subtitles into matching video files.
+- Optionally fetches missing subtitles from online providers.
+- Optionally synchronizes embedded subtitle timing to the audio track.
 - Optionally tags missing/unknown audio stream language metadata.
 - Deletes unwanted files and unwanted subfolders (aggressive cleanup).
 - Renames and moves video files into their final TV/Movie layout.
+- Indexes processed files so they can be skipped on future runs.
 - Deletes empty folders.
 
 It can also remove a completed torrent from qBittorrent when a torrent hash is provided.
 """
 
-from os import walk, remove, listdir, rmdir, path as os_path, sep as os_sep, environ
+from os import (
+    walk,
+    remove,
+    listdir,
+    rmdir,
+    path as os_path,
+    sep as os_sep,
+    environ,
+    getuid,
+)
 from fcntl import flock, LOCK_EX, LOCK_NB
 from time import sleep
-from sys import argv, exit as sys_exit
 from shutil import rmtree
 from warnings import filterwarnings
 from logging import getLogger, ERROR
+from argparse import ArgumentParser
 
 filterwarnings("ignore", message=".*doesn't match a supported version")
 environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 getLogger("huggingface_hub").setLevel(ERROR)
 
 # pylint: disable=wrong-import-position
-from log import log_error, check_clear_log, log_debug
-from qb import remove_torrent
-from tv import move as tv_move
-from movie import move as movie_move
-from const import UNWANTED_FOLDERS, VIDEO_EXTENSIONS, EXT_FILTER
-from utils import (
+from .log import log_error, check_clear_log, log_debug
+from .qb import remove_torrent
+from .tv import move as tv_move
+from .movie import move as movie_move
+from .const import UNWANTED_FOLDERS, VIDEO_EXTENSIONS, EXT_FILTER
+from .utils import (
     find_folders,
     find_corrected_directory,
     is_plex_folder,
     is_script_temp_file,
     is_tv_dir,
     is_main_folder,
+    is_media_directory,
 )
-from config import (
+from .config import (
     ensure_config_exists,
     get_enable_audio_tagging,
 )
-from audio import tag_audio_track_languages
-from subtitles import merge_subtitles_in_directory
-from fetch_subs import fetch_subtitles_in_directory
-from sync_subs import sync_subtitles_in_directory
-from indexing import (
+from ._paths import data_dir
+from .audio.tagging import tag_audio_track_languages
+from .subs.embedding import merge_subtitles_in_directory
+from .subs.fetching import fetch_subtitles_in_directory
+from .subs.syncing import sync_subtitles_in_directory
+from .indexing import (
     mark_indexed,
     should_index_video,
     collect_indexed_videos,
@@ -54,9 +68,6 @@ from indexing import (
 )
 
 # pylint: enable=wrong-import-position
-
-START_DIR = argv[1]
-TORRENT_HASH = argv[2] if len(argv) > 2 else None
 
 
 def _get_lock():
@@ -67,7 +78,7 @@ def _get_lock():
 
     Note: the lock is advisory (``flock``).
     """
-    lock_file_path = os_path.join(os_path.dirname(__file__), ".plex_organizer.lock")
+    lock_file_path = os_path.join(data_dir(), ".plex_organizer.lock")
     while True:
         try:
             with open(lock_file_path, "w", encoding="utf-8") as lock_file:
@@ -222,30 +233,51 @@ def main():
     Validates args, ensures config/logs exist, optionally removes a torrent from
     qBittorrent, then processes either a main folder or a single directory.
     """
-    if len(argv) < 2:
-        log_error("Error: No directory provided.")
-        log_error("Usage: qb_delete.py <dir> <optional_torrent_hash>")
-        sys_exit(1)
+    parser = ArgumentParser(
+        prog="plex-organizer",
+        description="Automated media file organizer for Plex.",
+    )
+    parser.add_argument("start_dir", help="Directory to process")
+    parser.add_argument(
+        "torrent_hash",
+        nargs="?",
+        default=None,
+        help="Optional torrent hash to remove from qBittorrent",
+    )
+    args = parser.parse_args()
+
+    if getuid() != 0:
+        parser.error("plex-organizer must be run as root.")
+
+    start_dir = args.start_dir
+    torrent_hash = args.torrent_hash
 
     ensure_config_exists()
     check_clear_log()
     _get_lock()
     log_debug(
-        f"Starting Plex Organizer with directory: {START_DIR} and torrent hash: {TORRENT_HASH}"
+        f"Starting Plex Organizer with directory: {start_dir} and torrent hash: {torrent_hash}"
     )
 
     try:
-        if TORRENT_HASH:
-            remove_torrent(TORRENT_HASH)
+        if torrent_hash:
+            remove_torrent(torrent_hash)
+
+        if not is_media_directory(start_dir):
+            log_debug(
+                f"Directory '{start_dir}' is not a recognised media folder. "
+                "Keeping files and exiting."
+            )
+            return
 
         directories = []
-        if is_main_folder(START_DIR):
+        if is_main_folder(start_dir):
             directories = [
-                os_path.join(START_DIR, "tv"),
-                os_path.join(START_DIR, "movies"),
+                os_path.join(start_dir, "tv"),
+                os_path.join(start_dir, "movies"),
             ]
         else:
-            directories = [START_DIR]
+            directories = [start_dir]
         log_debug(f"Processing directories: {directories}")
         for directory in directories:
             _process_directory(directory)

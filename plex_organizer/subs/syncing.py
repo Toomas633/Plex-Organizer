@@ -12,24 +12,25 @@ from __future__ import annotations
 
 from hashlib import sha256
 from os import path as os_path
+from shutil import which as shutil_which
 from tempfile import NamedTemporaryFile
 from typing import Dict, List
 
-from config import get_sync_subtitles
-from const import VIDEO_EXTENSIONS
-from ffmpeg_utils import (
+from ..config import get_sync_subtitles
+from ..const import VIDEO_EXTENSIONS
+from ..ffmpeg_utils import (
     COPY_STREAM_ARGS,
     cleanup_paths,
     create_temp_output,
     ffmpeg_input_cmd,
+    get_ffmpeg,
     probe_streams_json,
     replace_and_restore_timestamps,
     run_cmd,
-    which_or_log,
 )
-from log import log_debug, log_error
-from utils import is_plex_folder
-from const import TEXT_SUB_CODECS, ASS_CODECS
+from ..log import log_debug, log_error
+from ..utils import is_plex_folder
+from ..const import TEXT_SUB_CODECS, ASS_CODECS
 
 
 def _file_hash(path: str) -> str:
@@ -55,13 +56,7 @@ def _extract_stream(
     """Extract subtitle stream *stream_idx* as *fmt* to *out_path*."""
     proc = run_cmd(
         [
-            ffmpeg,
-            "-y",
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-i",
-            video_path,
+            *ffmpeg_input_cmd(ffmpeg, video_path),
             "-map",
             f"0:s:{stream_idx}",
             "-f",
@@ -126,9 +121,7 @@ def _build_remux_cmd(
     tmp_path: str,
 ) -> List[str]:
     """Build the ffmpeg command list for remuxing synced subtitle streams."""
-    ffmpeg = which_or_log("ffmpeg")
-    if not ffmpeg:
-        return []
+    ffmpeg = get_ffmpeg()
 
     is_mp4 = os_path.splitext(video_path)[1].lower() == ".mp4"
     cmd = ffmpeg_input_cmd(ffmpeg, video_path)
@@ -230,9 +223,9 @@ def _sync_video_subtitles(video_path: str) -> None:
     if is_plex_folder(video_path) or is_plex_folder(os_path.dirname(video_path)):
         return
 
-    ffmpeg = which_or_log("ffmpeg")
-    ffsubsync_bin = which_or_log("ffsubsync")
-    if not ffmpeg or not ffsubsync_bin:
+    ffmpeg = get_ffmpeg()
+    ffsubsync_bin = shutil_which("ffsubsync")
+    if not ffsubsync_bin:
         return
 
     metadata = _get_sub_stream_metadata(video_path)

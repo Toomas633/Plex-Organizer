@@ -2,18 +2,22 @@
 
 This module centralises subprocess wrappers, ffprobe queries, and ffmpeg
 command-building helpers that are used by multiple modules (audio, subtitles).
+
+Binary resolution is handled by the ``static_ffmpeg`` package which ships
+pre-built static binaries for ffmpeg and ffprobe — no system install required.
 """
 
 from __future__ import annotations
 
+from functools import lru_cache
 from json import JSONDecodeError, loads as json_loads
 from os import path as os_path, remove as os_remove, replace, stat, utime
-from shutil import which
 from subprocess import run, CompletedProcess
 from tempfile import NamedTemporaryFile
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Sequence, Tuple
+from static_ffmpeg import add_paths, run as ffmpeg_run
 
-from log import log_error
+from .log import log_error
 
 COPY_STREAM_ARGS: List[str] = [
     "-c:v",
@@ -39,26 +43,27 @@ WAV_OUTPUT_ARGS: List[str] = [
 ]
 
 
-def which_or_log(exe: str) -> Optional[str]:
-    """Resolve an executable on PATH; log an error if missing."""
-    resolved = which(exe)
-    if not resolved:
-        log_error(
-            f"Missing required tool '{exe}'. "
-            f"Install ffmpeg and ensure '{exe}' is on PATH."
-        )
-    return resolved
+@lru_cache(maxsize=1)
+def _resolve_binaries() -> Tuple[str, str]:
+    """Return (ffmpeg_path, ffprobe_path) from the static-ffmpeg package.
+
+    The result is cached so the download/check only happens once per process.
+    """
+    add_paths()
+    ffmpeg_path, ffprobe_path = (
+        ffmpeg_run.get_or_fetch_platform_executables_else_raise()
+    )
+    return ffmpeg_path, ffprobe_path
 
 
-def which_or_raise(exe: str) -> str:
-    """Resolve an executable on PATH or raise *RuntimeError*."""
-    resolved = which(exe)
-    if not resolved:
-        raise RuntimeError(
-            f"Missing required tool '{exe}'. "
-            f"Install ffmpeg and ensure '{exe}' is on PATH."
-        )
-    return resolved
+def get_ffmpeg() -> str:
+    """Return the absolute path to the ffmpeg binary."""
+    return _resolve_binaries()[0]
+
+
+def get_ffprobe() -> str:
+    """Return the absolute path to the ffprobe binary."""
+    return _resolve_binaries()[1]
 
 
 def run_cmd(cmd: List[str]) -> CompletedProcess[str]:
@@ -73,39 +78,39 @@ def run_cmd(cmd: List[str]) -> CompletedProcess[str]:
     )
 
 
+def probe_json(
+    video_path: str,
+    extra_args: Sequence[str] = (),
+) -> Dict[str, Any]:
+    """Run *ffprobe* with JSON output and return the parsed payload.
+
+    ``ffprobe -v error -print_format json <extra_args> <video_path>``
+
+    Returns an empty dict on failure.
+    """
+    ffprobe = get_ffprobe()
+    proc = run_cmd(
+        [ffprobe, "-v", "error", "-print_format", "json", *extra_args, video_path]
+    )
+    if proc.returncode != 0:
+        return {}
+    try:
+        return json_loads(proc.stdout or "{}") or {}
+    except (JSONDecodeError, TypeError):
+        return {}
+
+
 def probe_streams_json(
     video_path: str,
     stream_selector: str = "s",
 ) -> List[Dict[str, Any]]:
     """Probe streams (default: subtitle) from a container as parsed JSON dicts.
 
-    Returns an empty list when ffprobe is missing or fails.
+    Returns an empty list when ffprobe fails.
     """
-    ffprobe = which("ffprobe")
-    if not ffprobe:
-        return []
-
-    proc = run_cmd(
-        [
-            ffprobe,
-            "-v",
-            "error",
-            "-print_format",
-            "json",
-            "-show_streams",
-            "-select_streams",
-            stream_selector,
-            video_path,
-        ]
+    payload = probe_json(
+        video_path, ["-show_streams", "-select_streams", stream_selector]
     )
-    if proc.returncode != 0:
-        return []
-
-    try:
-        payload: Dict[str, Any] = json_loads(proc.stdout or "{}")
-    except (JSONDecodeError, TypeError):
-        return []
-
     streams = payload.get("streams") or []
     if not isinstance(streams, list):
         return []
@@ -124,11 +129,25 @@ def probe_subtitle_languages(video_path: str) -> set[str]:
     return languages
 
 
+def probe_duration_seconds(video_path: str) -> float | None:
+    """Probe container duration in seconds.
+
+    Returns ``None`` when ffprobe fails or the value is unavailable.
+    """
+    payload = probe_json(video_path, ["-show_entries", "format=duration"])
+    fmt = payload.get("format") or {}
+    dur = fmt.get("duration")
+    if dur is None:
+        return None
+    try:
+        return float(dur)
+    except (ValueError, TypeError):
+        return None
+
+
 def probe_subtitle_stream_count(video_path: str) -> int:
     """Return the number of subtitle streams embedded in a container."""
-    ffprobe = which("ffprobe")
-    if not ffprobe:
-        return 0
+    ffprobe = get_ffprobe()
 
     proc = run_cmd(
         [
@@ -156,19 +175,7 @@ def extract_wav(ffmpeg: str, video_path: str, wav_path: str) -> bool:
 
     Returns True on success, False on failure.
     """
-    proc = run_cmd(
-        [
-            ffmpeg,
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-y",
-            "-i",
-            video_path,
-            *WAV_OUTPUT_ARGS,
-            wav_path,
-        ]
-    )
+    proc = run_cmd([*ffmpeg_input_cmd(ffmpeg, video_path), *WAV_OUTPUT_ARGS, wav_path])
     if proc.returncode != 0:
         log_error(
             f"ffmpeg failed extracting audio from '{video_path}':\n"
@@ -178,12 +185,27 @@ def extract_wav(ffmpeg: str, video_path: str, wav_path: str) -> bool:
     return True
 
 
-def ffmpeg_input_cmd(ffmpeg: str, video_path: str) -> List[str]:
+def ffmpeg_input_cmd(
+    ffmpeg: str,
+    video_path: str,
+    pre_input: Sequence[str] = (),
+) -> List[str]:
     """Return the standard ffmpeg invocation header for *video_path*.
 
-    ``[ffmpeg, -y, -hide_banner, -loglevel, error, -i, video_path]``
+    ``[ffmpeg, -y, -hide_banner, -loglevel, error, *pre_input, -i, video_path]``
+
+    Use *pre_input* for flags that must precede ``-i`` (e.g. ``-ss``).
     """
-    return [ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", video_path]
+    return [
+        ffmpeg,
+        "-y",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        *pre_input,
+        "-i",
+        video_path,
+    ]
 
 
 def build_ffmpeg_base_cmd(

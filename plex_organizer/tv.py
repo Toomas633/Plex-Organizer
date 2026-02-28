@@ -6,7 +6,7 @@ and logging errors or duplicates.
 
 from os import path as os_path, makedirs, sep as os_sep
 from re import compile as re_compile, IGNORECASE
-from utils import move_file, create_name, capitalize, find_corrected_directory
+from .utils import move_file, create_name, capitalize, find_corrected_directory
 
 
 def _create_name(root: str, file: str) -> str:

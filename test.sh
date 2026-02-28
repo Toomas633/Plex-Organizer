@@ -3,12 +3,11 @@ set -euo pipefail
 
 SOURCE_DIR="testData"
 TARGET_DIR="testEnv"
-PYTHON_SCRIPT="plex_organizer.py"
+PYTHON_SCRIPT="plex_organizer"
 VENV_DIR="venv"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FULL_TARGET_DIR="$ROOT_DIR/$TARGET_DIR"
-FULL_SCRIPT_PATH="$ROOT_DIR/$PYTHON_SCRIPT"
 FULL_VENV_PATH="$ROOT_DIR/$VENV_DIR"
 
 copy_test_data() {
@@ -61,25 +60,23 @@ if [[ -f "$FULL_VENV_PATH/bin/activate" ]]; then
   echo "Activating virtual environment..."
   # shellcheck disable=SC1091
   source "$FULL_VENV_PATH/bin/activate"
-  echo "Installing requirements..."
-  if ! python -m pip install -r "$ROOT_DIR/requirements.txt" 2>&1; then
+  echo "Installing package..."
+  if ! python -m pip install -e ".[dev]" 2>&1; then
     echo "Standard install failed; retrying with webrtcvad workaround..."
-    # webrtcvad may fail to compile on aarch64 / missing python3-dev headers.
-    # Install pre-built wheels, then ffsubsync without its deps, then the rest.
     python -m pip install webrtcvad-wheels
     python -m pip install --no-deps ffsubsync
-    grep -vi 'ffsubsync' "$ROOT_DIR/requirements.txt" | python -m pip install -r /dev/stdin
+    python -m pip install --no-deps -e ".[dev]"
   fi
 else
   echo "Virtual environment not found! Please create it first."
   exit 1
 fi
 
-if [[ -f "$FULL_SCRIPT_PATH" ]]; then
+if [[ -d "$ROOT_DIR/$PYTHON_SCRIPT" ]]; then
   echo "Running $PYTHON_SCRIPT..."
-  python "$FULL_SCRIPT_PATH" "$FULL_TARGET_DIR"
+  plex-organizer "$FULL_TARGET_DIR"
 else
-  echo "Python script $PYTHON_SCRIPT not found!"
+  echo "Package $PYTHON_SCRIPT not found!"
   exit 1
 fi
 

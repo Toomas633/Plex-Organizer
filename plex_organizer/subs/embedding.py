@@ -15,26 +15,26 @@ from tempfile import NamedTemporaryFile
 from typing import Tuple, Any, Dict, List, Optional, Sequence
 from langdetect import DetectorFactory, detect_langs
 from langdetect.lang_detect_exception import LangDetectException
-from config import get_analyze_embedded_subtitles, get_enable_subtitle_embedding
-from const import (
+from ..config import get_analyze_embedded_subtitles, get_enable_subtitle_embedding
+from ..const import (
     ISO639_1_TO_2,
     TEXT_SUBTITLE_EXTENSIONS,
     VIDEO_EXTENSIONS,
     SUBTITLE_EXTENSIONS,
 )
-from dataclass import SubtitleMergePlan
-from ffmpeg_utils import (
+from ..dataclass import SubtitleMergePlan
+from ..ffmpeg_utils import (
     build_ffmpeg_base_cmd,
     create_temp_output,
     ffmpeg_input_cmd,
+    get_ffmpeg,
     probe_streams_json,
     probe_subtitle_stream_count,
     replace_and_restore_timestamps,
     run_cmd,
-    which_or_log,
 )
-from log import log_error, log_debug
-from utils import is_plex_folder
+from ..log import log_error, log_debug
+from ..utils import is_plex_folder
 
 DetectorFactory.seed = 0
 
@@ -278,9 +278,7 @@ def _tag_embedded_subtitle_languages(video_path: str) -> None:
     if not os_path.isfile(video_path):
         return
 
-    ffmpeg = which_or_log("ffmpeg")
-    if not ffmpeg:
-        return
+    ffmpeg = get_ffmpeg()
 
     streams = probe_streams_json(video_path)
     if not streams:
@@ -728,9 +726,7 @@ def _embed_subtitles(plan: SubtitleMergePlan) -> None:
     if not existing_subs:
         return
 
-    ffmpeg = which_or_log("ffmpeg")
-    if not ffmpeg:
-        return
+    ffmpeg = get_ffmpeg()
 
     tmp_path = create_temp_output(plan.video_path, prefix=".submerge.")
 

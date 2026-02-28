@@ -7,24 +7,26 @@ written back into the container as ISO 639-2 language tags.
 """
 
 from __future__ import annotations
-from json import loads
 from os import path as os_path
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional, Tuple
-from config import get_cpu_threads
-from const import ISO639_1_TO_2
-from dataclass import AudioStream
-from ffmpeg_utils import (
+from ..config import get_cpu_threads
+from ..const import ISO639_1_TO_2
+from ..dataclass import AudioStream
+from ..ffmpeg_utils import (
     WAV_OUTPUT_ARGS,
     build_ffmpeg_base_cmd,
+    ffmpeg_input_cmd,
+    get_ffmpeg,
+    get_ffprobe,
+    probe_duration_seconds,
     probe_streams_json,
     replace_and_restore_timestamps,
     run_cmd,
-    which_or_raise,
 )
-from log import log_error, log_debug
-from utils import is_plex_folder
-from whisper_detector import WhisperDetector
+from ..log import log_error, log_debug
+from ..utils import is_plex_folder
+from .whisper import WhisperDetector
 
 
 def _audio_stream_from_ffprobe(audio_index: int, stream: Dict[str, Any]) -> AudioStream:
@@ -79,48 +81,9 @@ def _probe_audio_streams(video_path: str) -> List[AudioStream]:
 
     streams = probe_streams_json(video_path, "a")
     if not streams:
-        which_or_raise("ffprobe")
+        get_ffprobe()
 
     return [_audio_stream_from_ffprobe(i, s) for i, s in enumerate(streams)]
-
-
-def _probe_duration_seconds(video_path: str) -> Optional[float]:
-    """Probe container duration in seconds.
-
-    Args:
-        video_path: Path to a local media file.
-
-    Returns:
-        Duration in seconds, or None if unavailable/ffprobe fails.
-    """
-    if not os_path.isfile(video_path):
-        raise FileNotFoundError(video_path)
-
-    which_or_raise("ffprobe")
-    proc = run_cmd(
-        [
-            "ffprobe",
-            "-v",
-            "error",
-            "-print_format",
-            "json",
-            "-show_entries",
-            "format=duration",
-            video_path,
-        ]
-    )
-    if proc.returncode != 0:
-        return None
-
-    try:
-        payload: Dict[str, Any] = loads(proc.stdout or "{}")
-        fmt = payload.get("format") or {}
-        dur = fmt.get("duration")
-        if dur is None:
-            return None
-        return float(dur)
-    except (ValueError, TypeError):
-        return None
 
 
 def _sampling_params_for_duration(dur_seconds: float) -> Tuple[int, List[float]]:
@@ -297,7 +260,7 @@ def _detect_languages_for_streams(
                 )
                 continue
 
-            offsets = _get_content_aware_offsets(_probe_duration_seconds(video_path))
+            offsets = _get_content_aware_offsets(probe_duration_seconds(video_path))
             if offsets is None:
                 offsets = [30 + (120 * i) for i in range(3)]
 
@@ -328,7 +291,7 @@ def _apply_language_metadata(
     if not updates:
         return
 
-    ffmpeg = which_or_raise("ffmpeg")
+    ffmpeg = get_ffmpeg()
     base, ext = os_path.splitext(video_path)
     tmp_out = f"{base}.langtag.tmp{ext}"
 
@@ -388,18 +351,10 @@ def _extract_audio_sample(
     Raises:
         RuntimeError: If ffmpeg fails to extract the sample.
     """
-    which_or_raise("ffmpeg")
+    ffmpeg = get_ffmpeg()
 
     cmd = [
-        "ffmpeg",
-        "-hide_banner",
-        "-loglevel",
-        "error",
-        "-y",
-        "-ss",
-        str(start_seconds),
-        "-i",
-        video_path,
+        *ffmpeg_input_cmd(ffmpeg, video_path, ["-ss", str(start_seconds)]),
         "-map",
         f"0:a:{audio_index}",
         "-t",

@@ -27,9 +27,9 @@ Plex Organizer is a Python-based utility designed to help manage and organize me
 - **Directory Management**: Moves directories to their appropriate locations and deletes empty directories.
 - **Customizable Directories**: Supports separate directories for TV shows and movies.
 - **Handle Plex:** Handles plex directories and optimized versions.
-- **Audio language tagging (optional)**: If enabled, detects missing audio track languages and writes ISO 639-2 tags into the container metadata (uses `ffprobe`/`ffmpeg` + `faster-whisper`).
-- **Subtitle embedding (optional)**: If enabled, embeds external subtitles into the video file and tags subtitle language/type metadata (uses `ffprobe`/`ffmpeg` + `langdetect`).
-- **Subtitle fetching (optional)**: If enabled, searches free online subtitle providers (OpenSubtitles, Podnapisi, Gestdown, TVsubtitles) for English subtitles and embeds them into videos that have no embedded subtitle streams.
+- **Audio language tagging (optional)**: If enabled, detects missing audio track languages and writes ISO 639-2 tags into the container metadata (uses `faster-whisper` + bundled `ffmpeg`/`ffprobe`).
+- **Subtitle embedding (optional)**: If enabled, embeds external subtitles into the video file and tags subtitle language/type metadata (uses bundled `ffmpeg`/`ffprobe` + `langdetect`).
+- **Subtitle fetching (optional)**: If enabled, searches free online subtitle providers (OpenSubtitles, Podnapisi, Gestdown, TVsubtitles) for missing subtitles in configured languages and embeds them into videos that lack those subtitle streams.
 - **Subtitle syncing (optional)**: If enabled, synchronizes embedded subtitle timing to the audio track using `ffsubsync`. Only text-based subtitle streams are synced; bitmap formats (PGS, VobSub) are left unchanged.
 - **Config file:** Ini file for common configuration options that can be set, disabled or enabled (_beware, some settings might not do anything if already run and info removed from file names, for example turning off quality inclusion and then enabling it_)
 
@@ -37,6 +37,7 @@ Notes:
 
 - Cleanup is intentionally aggressive: only video files (`.mkv`, `.mp4`), in-progress qBittorrent files (`.!qB`), and the organizer index file (`.plex_organizer.index`) are kept. Subtitle files/folders (e.g. `Subs/`, `Subtitles/`) are removed.
 - The organizer keeps a per-library index (`.plex_organizer.index`) so already-processed files can be skipped on future runs.
+- If the start directory is not a recognised media folder (does not contain `tv` or `movies` in its path and is not a main folder with `tv/` or `movies/` subfolders), the organizer removes the torrent (if a hash was provided) and exits — no files are deleted, moved, or modified.
 - If qBittorrent torrent removal is enabled (by providing a torrent hash), the qBittorrent Web API must be reachable and credentials must be set.
 
 ### Example Directory Structure
@@ -108,40 +109,70 @@ start_directory/
 </div>
 </div>
 
+### Project Structure
+
+All source modules live in the `plex_organizer/` package, invoked via `plex-organizer` or `python -m plex_organizer`.
+
+```
+plex_organizer/
+├── __init__.py
+├── __main__.py          # CLI entrypoint (plex-organizer / python -m plex_organizer)
+├── _paths.py            # data-directory resolution (config, logs, lock file)
+├── cli_generate_indexes.py  # plex-organizer-index CLI
+├── config.py            # config.ini access & auto-management
+├── const.py             # shared constants (extensions, folders, ISO mappings)
+├── dataclass.py         # shared data classes
+├── ffmpeg_utils.py      # ffprobe/ffmpeg wrapper helpers (uses static-ffmpeg)
+├── indexing.py          # per-library .plex_organizer.index files
+├── log.py               # logging facade
+├── movie.py             # movie rename/move logic
+├── qb.py                # qBittorrent Web API integration
+├── tv.py                # TV show rename/move logic
+├── utils.py             # shared utility functions
+├── audio/
+│   ├── __init__.py
+│   ├── tagging.py       # audio stream language tagging
+│   └── whisper.py       # faster-whisper language detection
+└── subs/
+    ├── __init__.py
+    ├── embedding.py     # external subtitle embedding + metadata
+    ├── fetching.py      # online subtitle downloading (subliminal)
+    └── syncing.py       # subtitle-to-audio timing sync (ffsubsync)
+```
+
+To generate index files for an already-organized library without running the full pipeline, use the `plex-organizer-index` command (see [Usage](#usage)).
+
 ## Requirements
 
-- Python 3.x
-- Dependencies listed in `requirements.txt`
-- `ffmpeg`/`ffprobe` on PATH (required if `enable_audio_tagging = true` and/or `enable_subtitle_embedding = true`)
-- `ffsubsync` on PATH (required if `sync_subtitles = true`; installed via `pip install ffsubsync`)
+- Python 3.10+
+- **Root privileges** — the organizer must be run as root (`sudo`)
+
+## Data directory
+
+By default, `config.ini`, log files, and the lock file are stored in `/root/.config/plex-organizer/`.
+
+The location can be overridden with the `PLEX_ORGANIZER_DIR` environment variable, or by running from a directory that already contains a `config.ini`.
 
 ## Installation
 
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/Toomas633/Plex-Organizer.git
-   cd Plex-Organizer
-   ```
-
-2. Install dependencies (recommended):
+Install directly from GitHub with [pipx](https://pipx.pypa.io/) (recommended) — no need to clone the repo:
 
 ```bash
-bash ./install.sh
+pipx install git+https://github.com/Toomas633/Plex-Organizer.git
 ```
 
-Or, to upgrade already-installed dependencies:
+This gives you three commands on your PATH:
 
-```bash
-bash ./install.sh --upgrade
-```
+| Command                | Purpose                                               |
+| ---------------------- | ----------------------------------------------------- |
+| `plex-organizer`       | Main organizer pipeline                               |
+| `plex-organizer-index` | Generate index files for an already-organized library |
+| `plex-organizer-kill`  | Kill running instances and release the lock file      |
 
 ## Update
 
-To update to the latest version just run update.sh (it will also run `install.sh` afterwards).
-
 ```bash
-./update.sh
+pipx upgrade plex-organizer
 ```
 
 ## Configuration
@@ -175,7 +206,7 @@ Key sections:
   - `whisper_model_size`: Whisper model size for `faster-whisper` (default `tiny`).
 - `[Subtitles]`
   - `enable_subtitle_embedding`: If `true`, embeds external subtitles and tags metadata before subtitle files/folders are removed.
-  - `analyze_embedded_subtitles`: If `true`, also analyzes already-embedded subtitle streams for missing/unknown language tags and writes detected language and SDH metadata back into the container. When `false` (default), only externally embedded subtitles are tagged.
+  - `analyze_embedded_subtitles`: If `true` (default), also analyzes already-embedded subtitle streams for missing/unknown language tags and writes detected language and SDH metadata back into the container. When `false`, only externally embedded subtitles are tagged.
   - `fetch_subtitles`: Comma-separated list of ISO 639-2 language codes to fetch (e.g. `eng` or `eng, est`). Leave empty to disable. Default: `eng`.
   - `subtitle_providers`: Comma-separated list of subtitle providers for fetching (default: `opensubtitles, podnapisi, gestdown, tvsubtitles`).
   - `sync_subtitles`: If `true`, synchronizes embedded subtitle timing to the audio track after all other subtitle operations. Default: `true`.
@@ -190,10 +221,8 @@ Start directory should have either...
 
 ### Manual running
 
-To run manually just go to the Plex-Organizer cloned or downloaded folder and run:
-
 ```bash
-./run.sh <start_directory>
+sudo plex-organizer <start_directory>
 ```
 
 ### Automated running
@@ -201,7 +230,7 @@ To run manually just go to the Plex-Organizer cloned or downloaded folder and ru
 Add this command to qBittorrent options under "Run external program on torrent finished":
 
 ```bash
-/bin/bash <path_to_script>/run.sh <start_directory> <torrent_hash>
+sudo plex-organizer <start_directory> <torrent_hash>
 ```
 
 Arguments:

@@ -1,5 +1,4 @@
 # Minimal devcontainer image for Plex-Organizer
-# Ubuntu base + ffmpeg for faster-whisper.
 
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 
@@ -8,12 +7,12 @@ RUN set -e; \
     apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
-    ffmpeg \
     gnupg \
     openjdk-25-jre-headless \
     pciutils \
     python-is-python3 \
     python3 \
+    python3-dev \
     python3-pip \
     python3-venv; \
     \

@@ -22,20 +22,20 @@ from subliminal import (
     scan_video,
 )
 
-from config import get_fetch_subtitles, get_subtitle_providers
-from const import VIDEO_EXTENSIONS
-from ffmpeg_utils import (
+from ..config import get_fetch_subtitles, get_subtitle_providers
+from ..const import VIDEO_EXTENSIONS
+from ..ffmpeg_utils import (
     build_ffmpeg_base_cmd,
     cleanup_paths,
     create_temp_output,
+    get_ffmpeg,
     probe_subtitle_languages,
     probe_subtitle_stream_count,
     replace_and_restore_timestamps,
     run_cmd,
-    which_or_log,
 )
-from log import log_debug, log_error
-from utils import is_plex_folder
+from ..log import log_debug, log_error
+from ..utils import is_plex_folder
 
 region.configure("dogpile.cache.memory", replace_existing_backend=True)
 
@@ -109,9 +109,7 @@ def _embed_srts(video_path: str, srt_files: list[tuple[str, str]]) -> None:
     if not srt_files:
         return
 
-    ffmpeg = which_or_log("ffmpeg")
-    if not ffmpeg:
-        return
+    ffmpeg = get_ffmpeg()
 
     is_mp4 = os_path.splitext(video_path)[1].lower() == ".mp4"
     existing_sub_count = probe_subtitle_stream_count(video_path)

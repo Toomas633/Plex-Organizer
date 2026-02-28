@@ -1,24 +1,19 @@
 """Generate Plex Organizer index files for an already-organized library.
 
-This script scans a media root and creates/updates the `.plex_organizer.index`
-files used by Plex Organizer to skip already-processed media.
+This module contains the index-generation logic used by the
+``plex-organizer-index`` console script.  It can also be invoked directly::
+
+    python -m plex_organizer.cli_generate_indexes /path/to/media/root
 
 Accepted inputs:
-- A main root folder that contains BOTH `tv/` and `movies/`.
-- A direct `tv/` folder.
-- A direct `tv/<Show>/` folder.
-- A direct `movies/` folder.
+
+- A main root folder that contains BOTH ``tv/`` and ``movies/``.
+- A direct ``tv/`` folder.
+- A direct ``tv/<Show>/`` folder.
+- A direct ``movies/`` folder.
 
 It only indexes videos that are already in their final layout and correctly
-named (as defined by `indexing.should_index_video`).
-
-Usage:
-    python generate_indexes.py /path/to/media/root
-
-Examples:
-    python generate_indexes.py /mnt/media
-    python generate_indexes.py /mnt/media/movies
-    python generate_indexes.py /mnt/media/tv
+named (as defined by ``indexing.should_index_video``).
 """
 
 from __future__ import annotations
@@ -30,18 +25,19 @@ from os import walk
 from os import path as os_path
 from typing import Dict, Set
 
-from config import ensure_config_exists
-from const import INDEX_FILENAME, VIDEO_EXTENSIONS
-from dataclass import IndexSummary
-from indexing import index_root_for_path, mark_indexed, should_index_video
-from utils import is_plex_folder, is_script_temp_file
+from .config import ensure_config_exists
+from .const import INDEX_FILENAME, VIDEO_EXTENSIONS
+from .dataclass import IndexSummary
+from .indexing import (
+    index_root_for_path,
+    mark_indexed,
+    should_index_video,
+)
+from .utils import is_plex_folder, is_script_temp_file
 
 
 def _rel_key(index_root: str, file_path: str) -> str:
-    """Return the index key for *file_path* relative to *index_root*.
-
-    The organizer stores file paths in index files as normalized relative paths.
-    """
+    """Return the index key for *file_path* relative to *index_root*."""
     rel = os_path.relpath(file_path, index_root)
     return os_path.normpath(rel)
 
@@ -50,7 +46,6 @@ def _read_index_keys(index_root: str) -> Set[str]:
     """Read existing index keys for *index_root*.
 
     Returns an empty set when the index does not exist or cannot be read.
-    Only the current index format is supported: ``{"files": {<relpath>: {...}}}``.
     """
     idx_path = os_path.join(index_root, INDEX_FILENAME)
     try:
@@ -73,12 +68,6 @@ def _read_index_keys(index_root: str) -> Set[str]:
 
 def _directories_to_scan(start_dir: str) -> list[str]:
     """Resolve *start_dir* into one or more directories to scan.
-
-    Accepted inputs:
-    - A main root containing BOTH ``tv/`` and ``movies/`` -> scan both.
-    - The ``tv/`` folder -> scan it.
-    - A ``tv/<Show>/`` folder -> scan that show only.
-    - The ``movies/`` folder -> scan it.
 
     Raises:
         ValueError: when *start_dir* does not match any accepted shape.
@@ -123,10 +112,7 @@ def _is_video_candidate(file_name: str) -> bool:
 
 
 def _safe_should_index_video(index_root: str, video_path: str) -> bool:
-    """Best-effort wrapper for ``should_index_video``.
-
-    Returns False on any filesystem errors.
-    """
+    """Best-effort wrapper for ``should_index_video``."""
     try:
         return should_index_video(index_root, video_path)
     except OSError:
@@ -134,10 +120,7 @@ def _safe_should_index_video(index_root: str, video_path: str) -> bool:
 
 
 def _safe_mark_indexed(index_root: str, video_path: str) -> bool:
-    """Best-effort wrapper for ``mark_indexed``.
-
-    Returns True if the file was recorded into the index, else False.
-    """
+    """Best-effort wrapper for ``mark_indexed``."""
     try:
         mark_indexed(index_root, video_path)
         return True
@@ -160,17 +143,7 @@ def _scan_and_index_root(
     files: list[str],
     cache: Dict[str, Set[str]],
 ) -> IndexSummary:
-    """Scan a single filesystem *root* and update index files as needed.
-
-    Args:
-        directory: The scan base passed to ``index_root_for_path``.
-        root: The current directory from ``os.walk``.
-        files: Filenames present in *root*.
-        cache: Mapping of index_root -> set of existing index keys.
-
-    Returns:
-        IndexSummary: counts for this single *root*.
-    """
+    """Scan a single filesystem *root* and update index files as needed."""
     total_videos = 0
     eligible_videos = 0
     newly_indexed = 0
@@ -223,8 +196,7 @@ def _scan_and_index_directory(
 def generate_indexes(start_dir: str) -> IndexSummary:
     """Generate/backfill organizer index files under *start_dir*.
 
-    The script only indexes videos that are already in the organizer's final
-    layout and correctly named.
+    Only indexes videos already in the organizer's final layout.
     """
     start_dir = os_path.abspath(start_dir)
     if not os_path.isdir(start_dir):
@@ -233,7 +205,6 @@ def generate_indexes(start_dir: str) -> IndexSummary:
     ensure_config_exists()
 
     dirs = _directories_to_scan(start_dir)
-
     cache: Dict[str, Set[str]] = {}
 
     total_videos = 0
@@ -265,11 +236,12 @@ def generate_indexes(start_dir: str) -> IndexSummary:
 
 
 def main() -> int:
-    """CLI entrypoint."""
+    """CLI entrypoint for ``plex-organizer-index``."""
     parser = ArgumentParser(
-        prog="generate_indexes.py",
+        prog="plex-organizer-index",
         description=(
-            "Generate/backfill .plex_organizer.index files for an already-organized library."
+            "Generate/backfill .plex_organizer.index files for an"
+            " already-organized library."
         ),
     )
     parser.add_argument(

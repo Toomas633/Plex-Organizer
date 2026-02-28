@@ -19,16 +19,16 @@ from os import makedirs, path as os_path, replace, walk
 from tempfile import NamedTemporaryFile
 from typing import Any, Dict
 
-from const import (
+from .const import (
     INDEX_FILENAME,
     MOVIE_CORRECT_NAME_RE,
     TV_CORRECT_NAME_RE,
     TV_CORRECT_SEASON_RE,
     VIDEO_EXTENSIONS,
 )
-from dataclass import IndexEntry
-from log import log_error
-from utils import (
+from .dataclass import IndexEntry
+from .log import log_error
+from .utils import (
     capitalize,
     find_corrected_directory,
     is_plex_folder,

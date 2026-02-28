@@ -1,8 +1,0 @@
-requests>=2.32.5
-chardet>=5.0.0
-black>=26.1.0
-pylint>=4.0.5
-faster-whisper>=1.2.1
-langdetect>=1.0.9
-subliminal>=2.6.0
-ffsubsync>=0.4.25

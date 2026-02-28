@@ -4,8 +4,8 @@ including removing torrents by hash and logging errors if removal fails.
 """
 
 from requests import Session
-from log import log_debug, log_error
-from config import get_host, get_qbittorrent_password, get_qbittorrent_username
+from .log import log_debug, log_error
+from .config import get_host, get_qbittorrent_password, get_qbittorrent_username
 
 
 def _authenticate_session(session: Session) -> bool:
