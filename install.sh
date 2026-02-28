@@ -62,7 +62,15 @@ if [[ ! -f "$REQUIREMENTS_FILE" ]]; then
 fi
 
 echo "Installing dependencies from: $REQUIREMENTS_FILE"
-python -m pip install ${PIP_UPGRADE_ARGS[@]:+"${PIP_UPGRADE_ARGS[@]}"} -r "$REQUIREMENTS_FILE"
+if ! python -m pip install ${PIP_UPGRADE_ARGS[@]:+"${PIP_UPGRADE_ARGS[@]}"} -r "$REQUIREMENTS_FILE" 2>&1; then
+  echo "Standard install failed; retrying with webrtcvad workaround..."
+  # webrtcvad may fail to compile on aarch64 / missing python3-dev headers.
+  # Install pre-built wheels, then ffsubsync without its deps, then the rest.
+  python -m pip install webrtcvad-wheels
+  python -m pip install --no-deps ffsubsync
+  grep -vi 'ffsubsync' "$REQUIREMENTS_FILE" | python -m pip install \
+    ${PIP_UPGRADE_ARGS[@]:+"${PIP_UPGRADE_ARGS[@]}"} -r /dev/stdin
+fi
 
 echo "Initializing config.ini (if needed)"
 python -c "import config; config.ensure_config_exists()"

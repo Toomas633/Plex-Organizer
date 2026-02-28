@@ -41,6 +41,7 @@ def ensure_config_exists():
             "analyze_embedded_subtitles": "true",
             "fetch_subtitles": "eng",
             "subtitle_providers": "opensubtitles, podnapisi, gestdown, tvsubtitles",
+            "sync_subtitles": "true",
         },
     }
 
@@ -209,6 +210,12 @@ def get_fetch_subtitles() -> list[str]:
     if not raw:
         return []
     return [code.strip().lower() for code in raw.split(",") if code.strip()]
+
+
+def get_sync_subtitles():
+    """Return True if subtitle-to-audio synchronization is enabled."""
+    config = _get_config()
+    return config.getboolean("Subtitles", "sync_subtitles", fallback=True)
 
 
 def get_subtitle_providers() -> list[str]:

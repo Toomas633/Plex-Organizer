@@ -45,6 +45,7 @@ from config import (
 from audio import tag_audio_track_languages
 from subtitles import merge_subtitles_in_directory
 from fetch_subs import fetch_subtitles_in_directory
+from sync_subs import sync_subtitles_in_directory
 from indexing import (
     mark_indexed,
     should_index_video,
@@ -204,6 +205,7 @@ def _process_directory(directory: str):
 
     merge_subtitles_in_directory(directory, video_paths=videos_to_process)
     fetch_subtitles_in_directory(directory, video_paths=videos_to_process)
+    sync_subtitles_in_directory(directory, video_paths=videos_to_process)
 
     for root, _, files in walk(directory, topdown=False):
         videos_to_process = _get_video_files_to_process(root, files, indexed_videos)

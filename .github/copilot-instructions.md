@@ -5,6 +5,7 @@
 - Entry point is `plex_organizer.py`: acquires a best-effort single-instance lock, then orchestrates:
   - (Optional) subtitle embedding into containers
   - (Optional) subtitle fetching from online providers
+  - (Optional) subtitle-to-audio synchronization
   - (Optional) audio-language tagging
   - Aggressive cleanup (delete unwanted files/folders)
   - Rename + move into final TV/Movie layout
@@ -20,6 +21,7 @@
   - Logging in `log.py` (errors + duplicates) controlled by `config.ini`.
   - Subtitle embedding in `subtitles.py` (enabled by config).
   - Subtitle fetching in `fetch_subs.py` (controlled by `fetch_subtitles` config).
+  - Subtitle syncing in `sync_subs.py` (controlled by `sync_subtitles` config).
   - Indexing in `indexing.py` via `.plex_organizer.index` files.
 
 ## Cleanup behavior (important)
@@ -86,6 +88,18 @@
   - Uses `subliminal` to search free online providers (OpenSubtitles, Podnapisi, Gestdown, TVsubtitles).
   - Only fetches languages that are **not** already present as embedded subtitle streams (runs after subtitle embedding).
   - Downloads best-matching SRT for each missing language, embeds via `ffmpeg`, then cleans up.
+  - Best-effort: failures are logged; processing continues.
+
+## Subtitle syncing
+
+- Controlled by `[Subtitles] sync_subtitles` (default `true`).
+- Implemented in `sync_subs.py`:
+  - Runs after subtitle embedding and fetching.
+  - For each video, probes embedded subtitle streams.
+  - Extracts each text-based stream (SRT, ASS/SSA, `mov_text`, WebVTT) to a temp file.
+  - Runs `ffsubsync` to align timing to the video's audio track.
+  - Compares the synced output to the original via SHA-256; only remuxes if timing actually changed.
+  - Bitmap subtitle formats (PGS, DVB, VobSub) are left unchanged.
   - Best-effort: failures are logged; processing continues.
 
 ## Developer workflows

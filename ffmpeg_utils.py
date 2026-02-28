@@ -7,13 +7,24 @@ command-building helpers that are used by multiple modules (audio, subtitles).
 from __future__ import annotations
 
 from json import JSONDecodeError, loads as json_loads
-from os import path as os_path, replace, stat, utime
+from os import path as os_path, remove as os_remove, replace, stat, utime
 from shutil import which
 from subprocess import run, CompletedProcess
 from tempfile import NamedTemporaryFile
 from typing import Any, Dict, List, Optional, Sequence
 
 from log import log_error
+
+COPY_STREAM_ARGS: List[str] = [
+    "-c:v",
+    "copy",
+    "-c:a",
+    "copy",
+    "-map_metadata",
+    "0",
+    "-map_chapters",
+    "0",
+]
 
 WAV_OUTPUT_ARGS: List[str] = [
     "-vn",
@@ -196,20 +207,8 @@ def build_ffmpeg_base_cmd(
     for i in range(len(input_paths)):
         cmd.extend(["-map", str(i + 1)])
 
-    cmd.extend(
-        [
-            "-c:v",
-            "copy",
-            "-c:a",
-            "copy",
-            "-map_metadata",
-            "0",
-            "-map_chapters",
-            "0",
-            "-c:s",
-            "copy",
-        ]
-    )
+    cmd.extend(COPY_STREAM_ARGS)
+    cmd.extend(["-c:s", "copy"])
 
     return cmd
 
@@ -227,6 +226,16 @@ def create_temp_output(video_path: str, prefix: str = ".ffutil.") -> str:
         suffix=out_suffix,
     ) as tmp:
         return tmp.name
+
+
+def cleanup_paths(paths: Sequence[str]) -> None:
+    """Best-effort delete of every path in *paths*."""
+    for path in paths:
+        try:
+            if os_path.exists(path):
+                os_remove(path)
+        except OSError:
+            pass
 
 
 def replace_and_restore_timestamps(

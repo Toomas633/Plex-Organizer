@@ -62,7 +62,14 @@ if [[ -f "$FULL_VENV_PATH/bin/activate" ]]; then
   # shellcheck disable=SC1091
   source "$FULL_VENV_PATH/bin/activate"
   echo "Installing requirements..."
-  python -m pip install -r "$ROOT_DIR/requirements.txt"
+  if ! python -m pip install -r "$ROOT_DIR/requirements.txt" 2>&1; then
+    echo "Standard install failed; retrying with webrtcvad workaround..."
+    # webrtcvad may fail to compile on aarch64 / missing python3-dev headers.
+    # Install pre-built wheels, then ffsubsync without its deps, then the rest.
+    python -m pip install webrtcvad-wheels
+    python -m pip install --no-deps ffsubsync
+    grep -vi 'ffsubsync' "$ROOT_DIR/requirements.txt" | python -m pip install -r /dev/stdin
+  fi
 else
   echo "Virtual environment not found! Please create it first."
   exit 1

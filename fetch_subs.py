@@ -11,7 +11,7 @@ are fetched.  Plex-managed folders are always skipped.
 
 from __future__ import annotations
 
-from os import path as os_path, remove
+from os import path as os_path
 from typing import List
 
 from babelfish import Language
@@ -26,6 +26,7 @@ from config import get_fetch_subtitles, get_subtitle_providers
 from const import VIDEO_EXTENSIONS
 from ffmpeg_utils import (
     build_ffmpeg_base_cmd,
+    cleanup_paths,
     create_temp_output,
     probe_subtitle_languages,
     probe_subtitle_stream_count,
@@ -36,7 +37,6 @@ from ffmpeg_utils import (
 from log import log_debug, log_error
 from utils import is_plex_folder
 
-# One-time in-memory cache so subliminal doesn't re-query within the same run.
 region.configure("dogpile.cache.memory", replace_existing_backend=True)
 
 
@@ -140,13 +140,7 @@ def _embed_srts(video_path: str, srt_files: list[tuple[str, str]]) -> None:
 
         replace_and_restore_timestamps(tmp_path, video_path)
     finally:
-        cleanup = [tmp_path] + input_paths
-        for path in cleanup:
-            try:
-                if os_path.exists(path):
-                    remove(path)
-            except OSError:
-                pass
+        cleanup_paths([tmp_path] + input_paths)
 
 
 def _fetch_subtitles_for_video(video_path: str, lang_codes: list[str]) -> None:

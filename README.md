@@ -30,6 +30,7 @@ Plex Organizer is a Python-based utility designed to help manage and organize me
 - **Audio language tagging (optional)**: If enabled, detects missing audio track languages and writes ISO 639-2 tags into the container metadata (uses `ffprobe`/`ffmpeg` + `faster-whisper`).
 - **Subtitle embedding (optional)**: If enabled, embeds external subtitles into the video file and tags subtitle language/type metadata (uses `ffprobe`/`ffmpeg` + `langdetect`).
 - **Subtitle fetching (optional)**: If enabled, searches free online subtitle providers (OpenSubtitles, Podnapisi, Gestdown, TVsubtitles) for English subtitles and embeds them into videos that have no embedded subtitle streams.
+- **Subtitle syncing (optional)**: If enabled, synchronizes embedded subtitle timing to the audio track using `ffsubsync`. Only text-based subtitle streams are synced; bitmap formats (PGS, VobSub) are left unchanged.
 - **Config file:** Ini file for common configuration options that can be set, disabled or enabled (_beware, some settings might not do anything if already run and info removed from file names, for example turning off quality inclusion and then enabling it_)
 
 Notes:
@@ -112,6 +113,7 @@ start_directory/
 - Python 3.x
 - Dependencies listed in `requirements.txt`
 - `ffmpeg`/`ffprobe` on PATH (required if `enable_audio_tagging = true` and/or `enable_subtitle_embedding = true`)
+- `ffsubsync` on PATH (required if `sync_subtitles = true`; installed via `pip install ffsubsync`)
 
 ## Installation
 
@@ -175,6 +177,8 @@ Key sections:
   - `enable_subtitle_embedding`: If `true`, embeds external subtitles and tags metadata before subtitle files/folders are removed.
   - `analyze_embedded_subtitles`: If `true`, also analyzes already-embedded subtitle streams for missing/unknown language tags and writes detected language and SDH metadata back into the container. When `false` (default), only externally embedded subtitles are tagged.
   - `fetch_subtitles`: Comma-separated list of ISO 639-2 language codes to fetch (e.g. `eng` or `eng, est`). Leave empty to disable. Default: `eng`.
+  - `subtitle_providers`: Comma-separated list of subtitle providers for fetching (default: `opensubtitles, podnapisi, gestdown, tvsubtitles`).
+  - `sync_subtitles`: If `true`, synchronizes embedded subtitle timing to the audio track after all other subtitle operations. Default: `true`.
     **NB!!** Make sure the qBittorrent `host` is correct. Torrent removal is best-effort: failures are logged and processing continues.
 
 ## Usage
