@@ -52,8 +52,8 @@ def _process_cmdline(pid: int) -> str:
         return "unknown"
 
 
-def main() -> None:
-    """Entry point for ``plex-organizer-kill``."""
+def run() -> None:
+    """Kill running plex-organizer processes and remove the lock file."""
     killed = 0
 
     for pid in _find_pids():
@@ -82,6 +82,10 @@ def main() -> None:
     else:
         print(f"Killed {killed} process(es).")
 
+
+def main() -> None:
+    """Entry point for ``plex-organizer-kill``."""
+    run()
     sys.exit(0)
 
 

@@ -68,11 +68,12 @@ pip install -e ".[dev]"
 
 This installs the package in editable mode with three CLI commands on PATH:
 
-| Command                | Purpose                                               |
-| ---------------------- | ----------------------------------------------------- |
-| `plex-organizer`       | Main organizer pipeline                               |
-| `plex-organizer-index` | Generate index files for an already-organized library |
-| `plex-organizer-kill`  | Kill running instances and release the lock file      |
+| Command                | Purpose                                                               |
+| ---------------------- | --------------------------------------------------------------------- |
+| `plex-organizer`       | Main organizer pipeline                                               |
+| `plex-organizer-index` | Generate index files for an already-organized library                 |
+| `plex-organizer-kill`  | Kill running instances and release the lock file                      |
+| `plex-organizer-setup` | Interactive post-install helper (logs, config migration, custom runs) |
 
 ## Project Structure
 
@@ -98,7 +99,8 @@ plex_organizer/
 ├── cli/
 │   ├── __init__.py
 │   ├── generate_indexes.py  # plex-organizer-index CLI
-│   └── kill.py              # plex-organizer-kill CLI
+│   ├── kill.py              # plex-organizer-kill CLI
+│   └── setup.py             # plex-organizer-setup interactive menu
 └── subs/
     ├── __init__.py
     ├── embedding.py     # external subtitle embedding + metadata
@@ -133,7 +135,8 @@ tests/
 ├── cli/
 │   ├── __init__.py
 │   ├── test_cli_generate_indexes.py  # cli/generate_indexes.py tests
-│   └── test_cli_kill.py             # cli/kill.py tests
+│   ├── test_cli_kill.py             # cli/kill.py tests
+│   └── test_cli_setup.py            # cli/setup.py tests
 └── subs/
     ├── __init__.py
     ├── test_subs_embedding.py       # subs/embedding.py helper tests

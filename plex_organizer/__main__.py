@@ -30,7 +30,7 @@ from time import sleep
 from shutil import rmtree
 from warnings import filterwarnings
 from logging import getLogger, ERROR
-from argparse import ArgumentParser
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 filterwarnings("ignore", message=".*doesn't match a supported version")
 environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
@@ -236,6 +236,13 @@ def main():
     parser = ArgumentParser(
         prog="plex-organizer",
         description="Automated media file organizer for Plex.",
+        epilog=(
+            "companion commands:\n"
+            "  plex-organizer-setup   Interactive post-install setup & configuration\n"
+            "  plex-organizer-index   Generate index files for an already-organized library\n"
+            "  plex-organizer-kill    Kill all running plex-organizer processes"
+        ),
+        formatter_class=RawDescriptionHelpFormatter,
     )
     parser.add_argument("start_dir", help="Directory to process")
     parser.add_argument(

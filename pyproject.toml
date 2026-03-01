@@ -31,6 +31,7 @@ dev = [
 plex-organizer = "plex_organizer.__main__:main"
 plex-organizer-index = "plex_organizer.cli.generate_indexes:main"
 plex-organizer-kill = "plex_organizer.cli.kill:main"
+plex-organizer-setup = "plex_organizer.cli.setup:main"
 
 [tool.setuptools.packages.find]
 include = ["plex_organizer*"]

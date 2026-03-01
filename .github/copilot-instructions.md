@@ -50,7 +50,8 @@ plex_organizer/
 ├── cli/
 │   ├── __init__.py
 │   ├── generate_indexes.py  # plex-organizer-index CLI
-│   └── kill.py              # plex-organizer-kill CLI
+│   ├── kill.py              # plex-organizer-kill CLI
+│   └── setup.py             # plex-organizer-setup interactive menu
 └── subs/
     ├── __init__.py
     ├── embedding.py     # external subtitle embedding + metadata
@@ -85,7 +86,8 @@ tests/
 ├── cli/
 │   ├── __init__.py
 │   ├── test_cli_generate_indexes.py  # cli/generate_indexes.py tests
-│   └── test_cli_kill.py             # cli/kill.py tests
+│   ├── test_cli_kill.py             # cli/kill.py tests
+│   └── test_cli_setup.py            # cli/setup.py tests
 └── subs/
     ├── __init__.py
     ├── test_subs_embedding.py       # subs/embedding.py helper tests
@@ -181,6 +183,7 @@ tests/
 - Install in editable mode: `pip install -e ".[dev]"`.
 - Run: `sudo plex-organizer <start_dir> [torrent_hash]` or `sudo python -m plex_organizer <start_dir> [torrent_hash]`.
 - Index generation: `plex-organizer-index <media_root>`.
+- Interactive setup: `plex-organizer-setup` (menu-driven post-install helper: view data dir, view logs, migrate old config, generate indexes, kill running instances, custom pipeline run).
 - The project is packaged via `pyproject.toml` — dependencies are declared there (not in `requirements.txt`).
 - `update.sh` pulls the latest code and reinstalls the package.
 - Data directory: defaults to `/root/.config/plex-organizer/` (config, logs, lock file). Override with `PLEX_ORGANIZER_DIR` env var.

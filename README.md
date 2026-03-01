@@ -130,11 +130,12 @@ pipx install git+https://github.com/Toomas633/Plex-Organizer.git
 
 This gives you three commands on your PATH:
 
-| Command                | Purpose                                               |
-| ---------------------- | ----------------------------------------------------- |
-| `plex-organizer`       | Main organizer pipeline                               |
-| `plex-organizer-index` | Generate index files for an already-organized library |
-| `plex-organizer-kill`  | Kill running instances and release the lock file      |
+| Command                | Purpose                                                               |
+| ---------------------- | --------------------------------------------------------------------- |
+| `plex-organizer`       | Main organizer pipeline                                               |
+| `plex-organizer-index` | Generate index files for an already-organized library                 |
+| `plex-organizer-kill`  | Kill running instances and release the lock file                      |
+| `plex-organizer-setup` | Interactive post-install helper (logs, config migration, custom runs) |
 
 ## Update
 
