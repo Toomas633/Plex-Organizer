@@ -16,6 +16,7 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.10"
+          cache: pip
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -30,6 +31,11 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat pylint-report.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ --cov=plex_organizer --cov-report=xml:coverage.xml -q
+        env:
+          PLEX_ORGANIZER_DIR: ${{ runner.temp }}/plex-organizer
       - name: SonarCloud Scan
         if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@v7

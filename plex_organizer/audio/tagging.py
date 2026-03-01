@@ -117,7 +117,7 @@ def _pick_offsets(
 
 
 def _get_content_aware_offsets(
-    duration_seconds: Optional[float],
+    duration_seconds: Optional[float | str],
 ) -> Optional[List[int]]:
     """Choose a small set of timestamps likely to contain dialogue.
 

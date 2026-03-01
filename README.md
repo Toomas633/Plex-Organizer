@@ -109,42 +109,6 @@ start_directory/
 </div>
 </div>
 
-### Project Structure
-
-All source modules live in the `plex_organizer/` package, invoked via `plex-organizer` or `python -m plex_organizer`.
-
-```
-plex_organizer/
-├── __init__.py
-├── __main__.py          # CLI entrypoint (plex-organizer / python -m plex_organizer)
-├── _paths.py            # data-directory resolution (config, logs, lock file)
-├── config.py            # config.ini access & auto-management
-├── const.py             # shared constants (extensions, folders, ISO mappings)
-├── dataclass.py         # shared data classes
-├── ffmpeg_utils.py      # ffprobe/ffmpeg wrapper helpers (uses static-ffmpeg)
-├── indexing.py          # per-library .plex_organizer.index files
-├── log.py               # logging facade
-├── movie.py             # movie rename/move logic
-├── qb.py                # qBittorrent Web API integration
-├── tv.py                # TV show rename/move logic
-├── utils.py             # shared utility functions
-├── audio/
-│   ├── __init__.py
-│   ├── tagging.py       # audio stream language tagging
-│   └── whisper.py       # faster-whisper language detection
-├── cli/
-│   ├── __init__.py
-│   ├── generate_indexes.py  # plex-organizer-index CLI
-│   └── kill.py              # plex-organizer-kill CLI
-└── subs/
-    ├── __init__.py
-    ├── embedding.py     # external subtitle embedding + metadata
-    ├── fetching.py      # online subtitle downloading (subliminal)
-    └── syncing.py       # subtitle-to-audio timing sync (ffsubsync)
-```
-
-To generate index files for an already-organized library without running the full pipeline, use the `plex-organizer-index` command (see [Usage](#usage)).
-
 ## Requirements
 
 - Python 3.10+

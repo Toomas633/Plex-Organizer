@@ -23,6 +23,8 @@ dependencies = [
 dev = [
     "black>=26.1.0",
     "pylint>=4.0.5",
+    "pytest>=8.0",
+    "pytest-cov>=6.0",
 ]
 
 [project.scripts]
@@ -32,3 +34,9 @@ plex-organizer-kill = "plex_organizer.cli.kill:main"
 
 [tool.setuptools.packages.find]
 include = ["plex_organizer*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore:.*doesn't match a supported version:Warning",
+]

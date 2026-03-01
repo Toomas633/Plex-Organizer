@@ -4,6 +4,7 @@
 - [Dev Container (VS Code)](#dev-container-vs-code)
 - [Local Setup (without Dev Container)](#local-setup-without-dev-container)
 - [Project Structure](#project-structure)
+  - [Test Structure](#test-structure)
 - [Pipeline Overview](#pipeline-overview)
 - [Testing](#testing)
 - [Tooling](#tooling)
@@ -34,10 +35,12 @@ Python dependencies are declared in `pyproject.toml`:
 
 Dev extras (`pip install -e ".[dev]"`):
 
-| Package  | Purpose         |
-| -------- | --------------- |
-| `black`  | Code formatting |
-| `pylint` | Linting         |
+| Package      | Purpose          |
+| ------------ | ---------------- |
+| `black`      | Code formatting  |
+| `pylint`     | Linting          |
+| `pytest`     | Test framework   |
+| `pytest-cov` | Coverage reports |
 
 ## Dev Container (VS Code)
 
@@ -103,6 +106,44 @@ plex_organizer/
     └── syncing.py       # subtitle-to-audio timing sync (ffsubsync)
 ```
 
+### Test Structure
+
+Tests mirror the source package layout under `tests/`:
+
+```
+tests/
+├── __init__.py
+├── conftest.py              # shared fixtures & pytest_configure hook
+├── test_config.py           # config.py tests
+├── test_const.py            # const.py tests
+├── test_dataclass.py        # dataclass.py tests
+├── test_ffmpeg_utils.py     # ffmpeg_utils.py tests
+├── test_indexing.py         # indexing.py tests
+├── test_log.py              # log.py tests
+├── test_main.py             # __main__.py tests
+├── test_movie.py            # movie.py tests
+├── test_paths.py            # _paths.py tests
+├── test_qb.py               # qb.py tests
+├── test_tv.py               # tv.py tests
+├── test_utils.py            # utils.py tests
+├── audio/
+│   ├── __init__.py
+│   ├── test_audio_tagging.py    # audio/tagging.py tests
+│   └── test_audio_whisper.py    # audio/whisper.py tests
+├── cli/
+│   ├── __init__.py
+│   ├── test_cli_generate_indexes.py  # cli/generate_indexes.py tests
+│   └── test_cli_kill.py             # cli/kill.py tests
+└── subs/
+    ├── __init__.py
+    ├── test_subs_embedding.py       # subs/embedding.py helper tests
+    ├── test_subs_embedding_ops.py   # subs/embedding.py operation tests
+    ├── test_subs_fetching.py        # subs/fetching.py tests
+    └── test_subs_syncing.py         # subs/syncing.py tests
+```
+
+Shared fixtures (`tmp_media_tree`, `config_dir`, `default_config`, etc.) live in `tests/conftest.py` and are available to all subfolders.
+
 ## Pipeline Overview
 
 `__main__.py` runs these steps in order for each directory:
@@ -128,7 +169,25 @@ Cleanup is **intentionally aggressive**:
 
 ## Testing
 
-### Quick verification
+The test suite uses `pytest` + `pytest-cov`. The `PLEX_ORGANIZER_DIR` environment variable must point to a temporary directory so tests use an isolated config and don't touch the real one.
+
+### Running tests
+
+```bash
+# Full suite
+PLEX_ORGANIZER_DIR="$(mktemp -d)" python -m pytest
+
+# With coverage report
+PLEX_ORGANIZER_DIR="$(mktemp -d)" python -m pytest --cov=plex_organizer --cov-report=term-missing
+
+# Single subpackage (e.g. subtitle tests)
+PLEX_ORGANIZER_DIR="$(mktemp -d)" python -m pytest tests/subs/
+
+# Single test file
+PLEX_ORGANIZER_DIR="$(mktemp -d)" python -m pytest tests/test_tv.py
+```
+
+### Quick verification (integration)
 
 ```bash
 bash ./test.sh
@@ -158,7 +217,9 @@ Place sample media structures under `testData/`. The directory is bind-mounted i
 | -------------- | ---------------------------- | ------------------------------ |
 | **Black**      | Auto-formatter, runs on save | `.vscode/settings.json`        |
 | **pylint**     | Linting (CI + local)         | `.github/workflows/pylint.yml` |
-| **SonarCloud** | Quality gate badge           | `.sonarcloud.properties`       |
+| **pytest**     | Unit / integration tests     | `pyproject.toml`               |
+| **pytest-cov** | Coverage reporting           | `pyproject.toml`               |
+| **SonarCloud** | Quality gate badge           | `sonar-project.properties`     |
 
 ### Formatting with Black
 

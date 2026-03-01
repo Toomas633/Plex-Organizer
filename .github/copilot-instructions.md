@@ -58,6 +58,45 @@ plex_organizer/
     └── syncing.py       # subtitle-to-audio timing sync (ffsubsync)
 ```
 
+### Test structure
+
+Tests mirror the source package layout and live in the `tests/` directory:
+
+```
+tests/
+├── __init__.py
+├── conftest.py              # shared fixtures & pytest_configure hook
+├── test_config.py           # config.py tests
+├── test_const.py            # const.py tests
+├── test_dataclass.py        # dataclass.py tests
+├── test_ffmpeg_utils.py     # ffmpeg_utils.py tests
+├── test_indexing.py         # indexing.py tests
+├── test_log.py              # log.py tests
+├── test_main.py             # __main__.py tests
+├── test_movie.py            # movie.py tests
+├── test_paths.py            # _paths.py tests
+├── test_qb.py               # qb.py tests
+├── test_tv.py               # tv.py tests
+├── test_utils.py            # utils.py tests
+├── audio/
+│   ├── __init__.py
+│   ├── test_audio_tagging.py    # audio/tagging.py tests
+│   └── test_audio_whisper.py    # audio/whisper.py tests
+├── cli/
+│   ├── __init__.py
+│   ├── test_cli_generate_indexes.py  # cli/generate_indexes.py tests
+│   └── test_cli_kill.py             # cli/kill.py tests
+└── subs/
+    ├── __init__.py
+    ├── test_subs_embedding.py       # subs/embedding.py helper tests
+    ├── test_subs_embedding_ops.py   # subs/embedding.py operation tests
+    ├── test_subs_fetching.py        # subs/fetching.py tests
+    └── test_subs_syncing.py         # subs/syncing.py tests
+```
+
+- Shared fixtures (`tmp_media_tree`, `config_dir`, `default_config`, etc.) live in `tests/conftest.py` and are available to all subfolders.
+- The `PLEX_ORGANIZER_DIR` environment variable must point to a temporary directory when running tests to avoid touching the real config.
+
 ## Cleanup behavior (important)
 
 - Cleanup is intentionally aggressive:
@@ -146,6 +185,24 @@ plex_organizer/
 - `update.sh` pulls the latest code and reinstalls the package.
 - Data directory: defaults to `/root/.config/plex-organizer/` (config, logs, lock file). Override with `PLEX_ORGANIZER_DIR` env var.
 
+### Testing
+
+- Framework: `pytest` + `pytest-cov` (dev dependencies in `pyproject.toml`).
+- Test layout mirrors `plex_organizer/` under `tests/` (see **Test structure** above).
+- Run the full suite:
+  ```bash
+  PLEX_ORGANIZER_DIR="$(mktemp -d)" python -m pytest
+  ```
+- Run with coverage:
+  ```bash
+  PLEX_ORGANIZER_DIR="$(mktemp -d)" python -m pytest --cov=plex_organizer --cov-report=term-missing
+  ```
+- Run a single subpackage:
+  ```bash
+  PLEX_ORGANIZER_DIR="$(mktemp -d)" python -m pytest tests/subs/
+  ```
+- `PLEX_ORGANIZER_DIR` must be set to a temp directory so tests use an isolated config.
+
 ## Conventions to follow when changing code
 
 - Prefer using `utils.move_file()` for any rename/move so duplicate handling + optional deletion (`Settings.delete_duplicates`) stays consistent.
@@ -156,3 +213,4 @@ plex_organizer/
 
 - Formatting: Black is the configured formatter (see `.vscode/settings.json`).
 - Linting in CI: `pylint` runs on push (see `.github/workflows/pylint.yml`, report is informational).
+- Testing: `pytest` + `pytest-cov` (see `.github/workflows/pylint.yml` and `pyproject.toml`). Tests are discovered recursively from `tests/`.
