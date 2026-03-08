@@ -7,9 +7,11 @@ written back into the container as ISO 639-2 language tags.
 """
 
 from __future__ import annotations
-from os import path as os_path
+
+from os.path import isfile, join, splitext, dirname
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional, Tuple
+
 from ..config import get_cpu_threads
 from ..const import ISO639_1_TO_2
 from ..dataclass import AudioStream
@@ -76,7 +78,7 @@ def _probe_audio_streams(video_path: str) -> List[AudioStream]:
         FileNotFoundError: If video_path does not exist.
         RuntimeError: If ffprobe is missing or fails.
     """
-    if not os_path.isfile(video_path):
+    if not isfile(video_path):
         raise FileNotFoundError(video_path)
 
     streams = probe_streams_json(video_path, "a")
@@ -176,7 +178,7 @@ def _sample_track_languages(
     """
     samples: List[Tuple[Optional[str], float]] = []
     detector = WhisperDetector(cpu_threads=get_cpu_threads())
-    wav_path = os_path.join(tmpdir, f"a{stream.audio_index}.wav")
+    wav_path = join(tmpdir, f"a{stream.audio_index}.wav")
 
     for offset in offsets:
         _extract_audio_sample(
@@ -292,7 +294,7 @@ def _apply_language_metadata(
         return
 
     ffmpeg = get_ffmpeg()
-    base, ext = os_path.splitext(video_path)
+    base, ext = splitext(video_path)
     tmp_out = f"{base}.langtag.tmp{ext}"
 
     cmd = build_ffmpeg_base_cmd(ffmpeg, video_path, [])
@@ -389,7 +391,7 @@ def tag_audio_track_languages(video_path: str) -> None:
     Notes:
         Errors are logged via log_error() and do not raise.
     """
-    if is_plex_folder(video_path) or is_plex_folder(os_path.dirname(video_path)):
+    if is_plex_folder(video_path) or is_plex_folder(dirname(video_path)):
         return
 
     log_debug(f"Tagging audio languages for video: {video_path}")

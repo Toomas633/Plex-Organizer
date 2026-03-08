@@ -15,30 +15,31 @@ Resolution order:
 
 from __future__ import annotations
 
-import os
+from os import environ, makedirs, getcwd
+from os.path import dirname, abspath, isfile, join
 from functools import lru_cache
 
-_PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
-_PACKAGE_PARENT = os.path.dirname(_PACKAGE_DIR)
+_PACKAGE_DIR = dirname(abspath(__file__))
+_PACKAGE_PARENT = dirname(_PACKAGE_DIR)
 
 
 @lru_cache(maxsize=1)
 def data_dir() -> str:
     """Return the resolved data directory (cached after first call)."""
 
-    env = os.environ.get("PLEX_ORGANIZER_DIR", "").strip()
+    env = environ.get("PLEX_ORGANIZER_DIR", "").strip()
     if env:
-        path = os.path.abspath(env)
-        os.makedirs(path, exist_ok=True)
+        path = abspath(env)
+        makedirs(path, exist_ok=True)
         return path
 
-    cwd = os.getcwd()
-    if os.path.isfile(os.path.join(cwd, "config.ini")):
+    cwd = getcwd()
+    if isfile(join(cwd, "config.ini")):
         return cwd
 
-    if os.path.isfile(os.path.join(_PACKAGE_PARENT, "config.ini")):
+    if isfile(join(_PACKAGE_PARENT, "config.ini")):
         return _PACKAGE_PARENT
 
     default = "/root/.config/plex-organizer"
-    os.makedirs(default, exist_ok=True)
+    makedirs(default, exist_ok=True)
     return default

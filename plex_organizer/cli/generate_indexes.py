@@ -22,7 +22,7 @@ from argparse import ArgumentParser
 from datetime import datetime
 from json import JSONDecodeError, load
 from os import walk
-from os import path as os_path
+from os.path import relpath, normpath, join, isdir, basename, dirname, abspath
 from typing import Dict, Set
 
 from ..config import ensure_config_exists
@@ -38,8 +38,8 @@ from ..utils import is_plex_folder, is_script_temp_file
 
 def _rel_key(index_root: str, file_path: str) -> str:
     """Return the index key for *file_path* relative to *index_root*."""
-    rel = os_path.relpath(file_path, index_root)
-    return os_path.normpath(rel)
+    rel = relpath(file_path, index_root)
+    return normpath(rel)
 
 
 def _read_index_keys(index_root: str) -> Set[str]:
@@ -47,7 +47,7 @@ def _read_index_keys(index_root: str) -> Set[str]:
 
     Returns an empty set when the index does not exist or cannot be read.
     """
-    idx_path = os_path.join(index_root, INDEX_FILENAME)
+    idx_path = join(index_root, INDEX_FILENAME)
     try:
         with open(idx_path, "r", encoding="utf-8") as f:
             payload = load(f)
@@ -72,19 +72,19 @@ def _directories_to_scan(start_dir: str) -> list[str]:
     Raises:
         ValueError: when *start_dir* does not match any accepted shape.
     """
-    tv_dir = os_path.join(start_dir, "tv")
-    movies_dir = os_path.join(start_dir, "movies")
+    tv_dir = join(start_dir, "tv")
+    movies_dir = join(start_dir, "movies")
 
-    if os_path.isdir(tv_dir) and os_path.isdir(movies_dir):
+    if isdir(tv_dir) and isdir(movies_dir):
         return [tv_dir, movies_dir]
 
-    base = os_path.basename(os_path.normpath(start_dir)).lower()
+    base = basename(normpath(start_dir)).lower()
     if base == "tv":
         return [start_dir]
     if base == "movies":
         return [start_dir]
 
-    parent = os_path.basename(os_path.dirname(os_path.normpath(start_dir))).lower()
+    parent = basename(dirname(normpath(start_dir))).lower()
     if parent == "tv":
         return [start_dir]
 
@@ -159,7 +159,7 @@ def _scan_and_index_root(
             continue
 
         total_videos += 1
-        video_path = os_path.join(root, file_name)
+        video_path = join(root, file_name)
         if not _safe_should_index_video(index_root, video_path):
             continue
 
@@ -198,8 +198,8 @@ def generate_indexes(start_dir: str) -> IndexSummary:
 
     Only indexes videos already in the organizer's final layout.
     """
-    start_dir = os_path.abspath(start_dir)
-    if not os_path.isdir(start_dir):
+    start_dir = abspath(start_dir)
+    if not isdir(start_dir):
         raise ValueError(f"Not a directory: {start_dir}")
 
     ensure_config_exists()

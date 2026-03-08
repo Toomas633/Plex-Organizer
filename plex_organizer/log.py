@@ -4,7 +4,8 @@ Logging utilities for Plex Organizer.
 Provides functions to log messages, errors, and duplicate file events to a log file.
 """
 
-from os import path as os_path, makedirs
+from os import makedirs
+from os.path import join, splitext, exists
 from datetime import datetime
 from .config import (
     get_clear_log,
@@ -32,17 +33,17 @@ def _log_message(level: str, message: str):
     if get_enable_logging():
         log_filename = get_log_file()
 
-        log_path = os_path.join(SCRIPT_DIR, log_filename)
+        log_path = join(SCRIPT_DIR, log_filename)
         if get_timestamped_log_files():
-            log_dir = os_path.join(SCRIPT_DIR, "logs")
+            log_dir = join(SCRIPT_DIR, "logs")
 
-            if not os_path.exists(log_dir):
+            if not exists(log_dir):
                 makedirs(log_dir, exist_ok=True)
 
-            base, ext = os_path.splitext(log_filename)
+            base, ext = splitext(log_filename)
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             log_filename = f"{base}.{timestamp}{ext}"
-            log_path = os_path.join(log_dir, log_filename)
+            log_path = join(log_dir, log_filename)
 
         with open(log_path, "a", encoding="utf-8") as log_file_obj:
             log_file_obj.write(
@@ -98,7 +99,5 @@ def check_clear_log():
         None
     """
     if get_clear_log() and get_enable_logging() and not get_timestamped_log_files():
-        with open(
-            os_path.join(SCRIPT_DIR, get_log_file()), "w", encoding="utf-8"
-        ) as log_file:
+        with open(join(SCRIPT_DIR, get_log_file()), "w", encoding="utf-8") as log_file:
             log_file.truncate(0)

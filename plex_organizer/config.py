@@ -2,12 +2,12 @@
 This module provides functions to access settings from the config.ini file.
 """
 
-from os import path as os_path
+from os.path import join, exists
 from configparser import ConfigParser
 
 from ._paths import data_dir
 
-CONFIG_PATH = os_path.join(data_dir(), "config.ini")
+CONFIG_PATH = join(data_dir(), "config.ini")
 
 
 def ensure_config_exists():
@@ -47,7 +47,7 @@ def ensure_config_exists():
         },
     }
 
-    if os_path.exists(CONFIG_PATH):
+    if exists(CONFIG_PATH):
         _check_config(default_config)
     else:
         _create_config(default_config)

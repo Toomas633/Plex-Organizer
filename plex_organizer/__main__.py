@@ -20,11 +20,11 @@ from os import (
     remove,
     listdir,
     rmdir,
-    path as os_path,
-    sep as os_sep,
+    sep,
     environ,
     getuid,
 )
+from os.path import join, normcase
 from fcntl import flock, LOCK_EX, LOCK_NB
 from time import sleep
 from shutil import rmtree
@@ -78,7 +78,7 @@ def _get_lock():
 
     Note: the lock is advisory (``flock``).
     """
-    lock_file_path = os_path.join(data_dir(), ".plex_organizer.lock")
+    lock_file_path = join(data_dir(), ".plex_organizer.lock")
     while True:
         try:
             with open(lock_file_path, "w", encoding="utf-8") as lock_file:
@@ -108,7 +108,7 @@ def _analyze_video_languages(root: str, video_files: list[str]):
         if is_plex_folder(root) or is_script_temp_file(file):
             continue
 
-        file_path = os_path.join(root, file)
+        file_path = join(root, file)
         tag_audio_track_languages(file_path)
 
 
@@ -130,7 +130,7 @@ def _delete_unwanted_files(root: str, files: list[str]):
 
     for file in unwanted_files:
         if not is_script_temp_file(file):
-            file_path = os_path.join(root, file)
+            file_path = join(root, file)
             try:
                 log_debug(f"Deleting unwanted file: {file_path}")
                 remove(file_path)
@@ -141,10 +141,8 @@ def _delete_unwanted_files(root: str, files: list[str]):
 def _delete_unwanted_directories(root: str):
     """Delete unwanted subdirectories under *root* (recursive)."""
     for folder in find_folders(root):
-        folder_parts = {os_path.normcase(part) for part in folder.split(os_sep)}
-        if any(
-            os_path.normcase(unwanted) in folder_parts for unwanted in UNWANTED_FOLDERS
-        ):
+        folder_parts = {normcase(part) for part in folder.split(sep)}
+        if any(normcase(unwanted) in folder_parts for unwanted in UNWANTED_FOLDERS):
             try:
                 log_debug(f"Deleting unwanted folder: {folder}")
                 rmtree(folder)
@@ -156,7 +154,7 @@ def _delete_empty_directories(directory: str):
     """Delete empty subdirectories under *directory* (post-order)."""
     for root, dirs, _ in walk(find_corrected_directory(directory), topdown=False):
         for dir_name in dirs:
-            dir_path = os_path.join(root, dir_name)
+            dir_path = join(root, dir_name)
             if not listdir(dir_path):
                 rmdir(dir_path)
 
@@ -205,7 +203,7 @@ def _get_video_files_to_process(
         f
         for f in files
         if f.lower().endswith(VIDEO_EXTENSIONS)
-        and not indexed_videos.get(os_path.join(root, f), False)
+        and not indexed_videos.get(join(root, f), False)
     ]
 
 
@@ -280,8 +278,8 @@ def main():
         directories = []
         if is_main_folder(start_dir):
             directories = [
-                os_path.join(start_dir, "tv"),
-                os_path.join(start_dir, "movies"),
+                join(start_dir, "tv"),
+                join(start_dir, "movies"),
             ]
         else:
             directories = [start_dir]

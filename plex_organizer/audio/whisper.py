@@ -12,6 +12,7 @@ Notes:
 
 from typing import Any, Dict, Optional, Tuple
 from faster_whisper import WhisperModel
+
 from ..config import get_whisper_model_size
 
 

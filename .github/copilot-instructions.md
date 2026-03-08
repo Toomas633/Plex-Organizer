@@ -206,11 +206,19 @@ tests/
   ```
 - `PLEX_ORGANIZER_DIR` must be set to a temp directory so tests use an isolated config.
 
-## Conventions to follow when changing code
+## Rules (`.github/copilot-rules/`)
 
-- Prefer using `utils.move_file()` for any rename/move so duplicate handling + optional deletion (`Settings.delete_duplicates`) stays consistent.
-- Don’t touch Plex-managed content: skip paths containing `Plex Versions` (`utils.is_plex_folder()`).
-- Keep filename parsing regex-driven and conservative (see `plex_organizer/tv.py` and `plex_organizer/movie.py` patterns).
+Detailed, topic-specific rules live in `.github/copilot-rules/` and are auto-activated by glob pattern. Always follow these when working on matching files:
+
+| Rule file             | Scope                                             | Key points                                                                                                            |
+| --------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `imports.md`          | `plex_organizer/**`, `tests/**`                   | Import specific names; relative imports in source, absolute in tests; 3-group ordering (stdlib → third-party → local) |
+| `code-conventions.md` | `plex_organizer/**`                               | Black formatting; use `utils.move_file()`; log errors don't raise; Google-style docstrings                            |
+| `testing.md`          | `tests/**`, `plex_organizer/**`                   | pytest + pytest-cov; `config_dir`/`default_config` fixtures; `PLEX_ORGANIZER_DIR` isolation                           |
+| `configuration.md`    | `plex_organizer/config.py`, `plex_organizer/**`   | `default_config` dict is source of truth; accessor pattern; unknown keys are auto-removed                             |
+| `cleanup-safety.md`   | `plex_organizer/**`                               | Aggressive cleanup; `is_plex_folder()` guard; unrecognised dirs → exit without modifying                              |
+| `ffmpeg-usage.md`     | `plex_organizer/**`                               | Use `get_ffmpeg()`/`get_ffprobe()` from `ffmpeg_utils.py`; remux to temp then replace; log failures                   |
+| `indexing.md`         | `plex_organizer/indexing.py`, `plex_organizer/**` | Index only final-layout names; movies root vs show root; `.plex_organizer.index` protected from cleanup               |
 
 ## Tooling
 

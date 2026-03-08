@@ -11,9 +11,8 @@ are fetched.  Plex-managed folders are always skipped.
 
 from __future__ import annotations
 
-from os import path as os_path
+from os.path import isfile, dirname, splitext
 from typing import List
-
 from babelfish import Language
 from subliminal import (
     download_best_subtitles,
@@ -92,8 +91,8 @@ def _download_subtitles(
     results: list[tuple[str, str]] = []
     for sub in saved:
         lang_iso = str(sub.language)
-        srt_path = os_path.splitext(video_path)[0] + f".{lang_iso}.srt"
-        if os_path.isfile(srt_path):
+        srt_path = splitext(video_path)[0] + f".{lang_iso}.srt"
+        if isfile(srt_path):
             iso3 = sub.language.alpha3
             results.append((srt_path, iso3))
     return results
@@ -111,7 +110,7 @@ def _embed_srts(video_path: str, srt_files: list[tuple[str, str]]) -> None:
 
     ffmpeg = get_ffmpeg()
 
-    is_mp4 = os_path.splitext(video_path)[1].lower() == ".mp4"
+    is_mp4 = splitext(video_path)[1].lower() == ".mp4"
     existing_sub_count = probe_subtitle_stream_count(video_path)
     input_paths = [p for p, _ in srt_files]
     tmp_path = create_temp_output(video_path, prefix=".fetchsub.")
@@ -143,11 +142,11 @@ def _embed_srts(video_path: str, srt_files: list[tuple[str, str]]) -> None:
 
 def _fetch_subtitles_for_video(video_path: str, lang_codes: list[str]) -> None:
     """Fetch and embed subtitles for languages not yet embedded in the video."""
-    if not os_path.isfile(video_path):
+    if not isfile(video_path):
         log_error(f"Video file not found: {video_path}")
         return
 
-    if is_plex_folder(video_path) or is_plex_folder(os_path.dirname(video_path)):
+    if is_plex_folder(video_path) or is_plex_folder(dirname(video_path)):
         return
 
     missing = _missing_languages(video_path, lang_codes)

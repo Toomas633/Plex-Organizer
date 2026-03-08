@@ -11,7 +11,7 @@ are always skipped.
 from __future__ import annotations
 
 from hashlib import sha256
-from os import path as os_path
+from os.path import isfile, dirname, splitext
 from shutil import which as shutil_which
 from tempfile import NamedTemporaryFile
 from typing import Dict, List
@@ -123,7 +123,7 @@ def _build_remux_cmd(
     """Build the ffmpeg command list for remuxing synced subtitle streams."""
     ffmpeg = get_ffmpeg()
 
-    is_mp4 = os_path.splitext(video_path)[1].lower() == ".mp4"
+    is_mp4 = splitext(video_path)[1].lower() == ".mp4"
     cmd = ffmpeg_input_cmd(ffmpeg, video_path)
 
     input_map: Dict[int, int] = {}
@@ -217,10 +217,10 @@ def _try_sync_stream(
 
 def _sync_video_subtitles(video_path: str) -> None:
     """Sync all text-based subtitle streams in *video_path* to its audio."""
-    if not os_path.isfile(video_path):
+    if not isfile(video_path):
         return
 
-    if is_plex_folder(video_path) or is_plex_folder(os_path.dirname(video_path)):
+    if is_plex_folder(video_path) or is_plex_folder(dirname(video_path)):
         return
 
     ffmpeg = get_ffmpeg()
@@ -234,7 +234,7 @@ def _sync_video_subtitles(video_path: str) -> None:
         log_debug(f"No text subtitle streams to sync in '{video_path}'")
         return
 
-    vid_dir = os_path.dirname(video_path)
+    vid_dir = dirname(video_path)
     synced: Dict[int, str] = {}
     temp_files: List[str] = []
 

@@ -15,7 +15,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from json import JSONDecodeError, dump, load
-from os import makedirs, path as os_path, replace, walk
+from os import makedirs, replace, walk
+from os.path import basename, dirname, exists, normpath, relpath, join
 from tempfile import NamedTemporaryFile
 from typing import Any, Dict
 
@@ -38,12 +39,12 @@ from .utils import (
 
 
 def _index_file_path(index_root: str) -> str:
-    return os_path.join(index_root, INDEX_FILENAME)
+    return join(index_root, INDEX_FILENAME)
 
 
 def _rel_key(index_root: str, file_path: str) -> str:
-    rel = os_path.relpath(file_path, index_root)
-    return os_path.normpath(rel)
+    rel = relpath(file_path, index_root)
+    return normpath(rel)
 
 
 def _read_index(path: str) -> Dict[str, Any]:
@@ -69,8 +70,8 @@ def _read_index(path: str) -> Dict[str, Any]:
 
 
 def _write_index(path: str, payload: Dict[str, Any]) -> None:
-    os_path_dir = os_path.dirname(path)
-    if os_path_dir and not os_path.exists(os_path_dir):
+    os_path_dir = dirname(path)
+    if os_path_dir and not exists(os_path_dir):
         makedirs(os_path_dir, exist_ok=True)
 
     with NamedTemporaryFile("w", delete=False, dir=os_path_dir, encoding="utf-8") as f:
@@ -109,20 +110,20 @@ def mark_indexed(index_root: str, file_path: str) -> None:
 def _is_valid_tv_layout(index_root: str, file_path: str) -> bool:
     """Return True if *file_path* matches the expected TV layout under *index_root*."""
     show_root = find_corrected_directory(index_root)
-    if os_path.normpath(show_root) != os_path.normpath(index_root):
+    if normpath(show_root) != normpath(index_root):
         return False
 
-    if find_corrected_directory(os_path.dirname(file_path)) != show_root:
+    if find_corrected_directory(dirname(file_path)) != show_root:
         return False
 
-    season_dir = os_path.basename(os_path.dirname(file_path))
+    season_dir = basename(dirname(file_path))
     season_match = TV_CORRECT_SEASON_RE.match(season_dir)
     if not season_match:
         return False
     season_folder = season_match.group(1)
 
-    file_name = os_path.basename(file_path)
-    show_title = capitalize(os_path.basename(show_root))
+    file_name = basename(file_path)
+    show_title = capitalize(basename(show_root))
     prefix = f"{show_title} "
     if not file_name.startswith(prefix):
         return False
@@ -137,11 +138,11 @@ def _is_valid_tv_layout(index_root: str, file_path: str) -> bool:
 def _is_valid_movie_layout(index_root: str, file_path: str) -> bool:
     """Return True if *file_path* matches the expected movie layout under *index_root*."""
     movies_root = find_corrected_directory(index_root)
-    if os_path.normpath(movies_root) != os_path.normpath(index_root):
+    if normpath(movies_root) != normpath(index_root):
         return False
-    if os_path.normpath(os_path.dirname(file_path)) != os_path.normpath(index_root):
+    if normpath(dirname(file_path)) != normpath(index_root):
         return False
-    return bool(MOVIE_CORRECT_NAME_RE.match(os_path.basename(file_path)))
+    return bool(MOVIE_CORRECT_NAME_RE.match(basename(file_path)))
 
 
 def should_index_video(index_root: str, file_path: str) -> bool:
@@ -166,7 +167,7 @@ def should_index_video(index_root: str, file_path: str) -> bool:
 
 
 def _index_root_for_video_path(directory: str, video_path: str) -> str:
-    return _index_root_for_path(directory, os_path.dirname(video_path))
+    return _index_root_for_path(directory, dirname(video_path))
 
 
 def _index_root_for_path(directory: str, root: str) -> str:
@@ -198,7 +199,7 @@ def collect_indexed_videos(directory: str) -> dict[str, bool]:
             if not file.lower().endswith(VIDEO_EXTENSIONS):
                 continue
 
-            video_path = os_path.join(root, file)
+            video_path = join(root, file)
             index_root = _index_root_for_video_path(directory, video_path)
             try:
                 indexed_videos[video_path] = _is_indexed(index_root, video_path)

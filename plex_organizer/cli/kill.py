@@ -5,10 +5,11 @@ Installed as the ``plex-organizer-kill`` console script.
 
 from __future__ import annotations
 
-import os
-import signal
-import subprocess
-import sys
+from os import kill, remove, getpid
+from os.path import join, exists
+from signal import SIGKILL
+from subprocess import check_output, CalledProcessError, DEVNULL
+from sys import exit as sys_exit
 
 from .._paths import data_dir
 
@@ -17,14 +18,14 @@ LOCK_FILENAME = ".plex_organizer.lock"
 
 def _find_pids() -> list[int]:
     """Return PIDs of running plex-organizer processes (excluding ourselves)."""
-    own_pid = os.getpid()
+    own_pid = getpid()
     try:
-        output = subprocess.check_output(
+        output = check_output(
             ["pgrep", "-f", "plex.organizer"],
             text=True,
-            stderr=subprocess.DEVNULL,
+            stderr=DEVNULL,
         )
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (CalledProcessError, FileNotFoundError):
         return []
 
     pids: list[int] = []
@@ -42,13 +43,13 @@ def _find_pids() -> list[int]:
 def _process_cmdline(pid: int) -> str:
     """Return the command line of *pid* for display purposes."""
     try:
-        output = subprocess.check_output(
+        output = check_output(
             ["ps", "-p", str(pid), "-o", "args="],
             text=True,
-            stderr=subprocess.DEVNULL,
+            stderr=DEVNULL,
         )
         return output.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (CalledProcessError, FileNotFoundError):
         return "unknown"
 
 
@@ -59,7 +60,7 @@ def run() -> None:
     for pid in _find_pids():
         cmdline = _process_cmdline(pid)
         try:
-            os.kill(pid, signal.SIGKILL)
+            kill(pid, SIGKILL)
             print(f"Killed process {pid} ({cmdline})")
             killed += 1
         except ProcessLookupError:
@@ -67,10 +68,10 @@ def run() -> None:
         except PermissionError:
             print(f"Permission denied killing process {pid} ({cmdline})")
 
-    lock_path = os.path.join(data_dir(), LOCK_FILENAME)
-    if os.path.exists(lock_path):
+    lock_path = join(data_dir(), LOCK_FILENAME)
+    if exists(lock_path):
         try:
-            os.remove(lock_path)
+            remove(lock_path)
             print(f"Removed lock file: {lock_path}")
         except OSError as exc:
             print(f"Failed to remove lock file: {exc}")
@@ -86,7 +87,7 @@ def run() -> None:
 def main() -> None:
     """Entry point for ``plex-organizer-kill``."""
     run()
-    sys.exit(0)
+    sys_exit(0)
 
 
 if __name__ == "__main__":

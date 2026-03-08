@@ -11,7 +11,8 @@ from __future__ import annotations
 
 from functools import lru_cache
 from json import JSONDecodeError, loads as json_loads
-from os import path as os_path, remove as os_remove, replace, stat, utime
+from os import remove, replace, stat, utime
+from os.path import dirname, exists, splitext
 from subprocess import run, CompletedProcess
 from tempfile import NamedTemporaryFile
 from typing import Any, Dict, List, Sequence, Tuple
@@ -237,8 +238,8 @@ def build_ffmpeg_base_cmd(
 
 def create_temp_output(video_path: str, prefix: str = ".ffutil.") -> str:
     """Create a temp output file next to *video_path* and return its path."""
-    out_dir = os_path.dirname(video_path)
-    out_suffix = os_path.splitext(video_path)[1]
+    out_dir = dirname(video_path)
+    out_suffix = splitext(video_path)[1]
 
     with NamedTemporaryFile(
         mode="wb",
@@ -254,8 +255,8 @@ def cleanup_paths(paths: Sequence[str]) -> None:
     """Best-effort delete of every path in *paths*."""
     for path in paths:
         try:
-            if os_path.exists(path):
-                os_remove(path)
+            if exists(path):
+                remove(path)
         except OSError:
             pass
 

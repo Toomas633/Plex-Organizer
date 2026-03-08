@@ -4,7 +4,7 @@ to standardized formats and directories, including handling Plex folders
 and logging errors or duplicates.
 """
 
-from os import path as os_path
+from os.path import join, splitext
 from re import match as re_match
 from .log import log_error
 from .const import MOVIE_CORRECT_NAME_RE
@@ -57,7 +57,7 @@ def _create_name(file: str) -> str:
 
     return create_name(
         name_parts,
-        os_path.splitext(file)[1],
+        splitext(file)[1],
         match.group(3) if match.group(3) else None,
     )
 
@@ -77,10 +77,8 @@ def move(directory: str, root: str, file: str) -> str:
     Returns:
         None
     """
-    source_path = os_path.join(root, file)
-    destination_path = os_path.join(
-        find_corrected_directory(directory), _create_name(file)
-    )
+    source_path = join(root, file)
+    destination_path = join(find_corrected_directory(directory), _create_name(file))
 
     if source_path == destination_path:
         return destination_path

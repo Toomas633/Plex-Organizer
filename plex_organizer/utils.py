@@ -1,6 +1,7 @@
 """Utility functions for file operations in Plex Organizer."""
 
-from os import path as os_path, sep as os_sep, listdir, remove
+from os import sep, listdir, remove
+from os.path import join, exists, isdir
 from shutil import move
 from typing import List
 from .log import log_error, log_duplicate
@@ -17,7 +18,7 @@ def is_plex_folder(path: str):
     Returns:
         bool: True if the path is a Plex Versions folder, False otherwise.
     """
-    return "Plex Versions" in path.split(os_sep)
+    return "Plex Versions" in path.split(sep)
 
 
 def find_folders(directory: str):
@@ -32,9 +33,9 @@ def find_folders(directory: str):
     """
     try:
         return [
-            os_path.join(directory, folder)
+            join(directory, folder)
             for folder in listdir(directory)
-            if os_path.isdir(os_path.join(directory, folder))
+            if isdir(join(directory, folder))
         ]
     except OSError as e:
         log_error(f"Error finding folders in directory {directory}: {e}")
@@ -55,11 +56,11 @@ def move_file(source_path: str, destination_path: str):
     if source_path == destination_path:
         return
 
-    if not os_path.exists(source_path):
+    if not exists(source_path):
         log_error(f"File not found: {source_path}.")
         return
 
-    if os_path.exists(destination_path):
+    if exists(destination_path):
         log_duplicate(
             f"File already exists: {destination_path}. Skipping move for {source_path}."
         )
@@ -107,7 +108,7 @@ def is_tv_dir(root: str):
     Returns:
         bool: True if the directory is in a TV show directory, False otherwise.
     """
-    return "tv" in root.split(os_sep)
+    return "tv" in root.split(sep)
 
 
 def is_main_folder(start: str):
@@ -122,7 +123,7 @@ def is_main_folder(start: str):
     """
     folders = []
     for part in find_folders(start):
-        folders.append(part.split(os_sep)[-1])
+        folders.append(part.split(sep)[-1])
     return "movies" in folders or "tv" in folders
 
 
@@ -142,7 +143,7 @@ def is_media_directory(start: str):
     """
     if is_main_folder(start):
         return True
-    parts = [p.lower() for p in start.split(os_sep)]
+    parts = [p.lower() for p in start.split(sep)]
     return "tv" in parts or "movies" in parts
 
 
@@ -215,14 +216,14 @@ def find_corrected_directory(directory: str):
     Returns:
         str: The corrected base path, truncated at the nearest "movies" or "tv/<Show>" boundary.
     """
-    is_relative = not directory.startswith(os_sep)
-    directory_parts: List[str] = [] if is_relative else [os_sep]
+    is_relative = not directory.startswith(sep)
+    directory_parts: List[str] = [] if is_relative else [sep]
 
-    for part in directory.split(os_sep):
+    for part in directory.split(sep):
         directory_parts.append(part)
         if part.lower() == "movies":
             break
         if directory_parts[-2].lower() == "tv" if len(directory_parts) > 1 else False:
             break
 
-    return os_path.join(*directory_parts)
+    return join(*directory_parts)

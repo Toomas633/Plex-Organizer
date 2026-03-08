@@ -4,7 +4,8 @@ to standardized formats and directories, including handling Plex folders
 and logging errors or duplicates.
 """
 
-from os import path as os_path, makedirs, sep as os_sep
+from os import makedirs, sep
+from os.path import join, splitext, exists
 from re import compile as re_compile, IGNORECASE
 from .utils import move_file, create_name, capitalize, find_corrected_directory
 
@@ -24,7 +25,7 @@ def _create_name(root: str, file: str) -> str:
     Returns:
         str: The standardized file name.
     """
-    show_name = capitalize(find_corrected_directory(root).split(os_sep)[-1])
+    show_name = capitalize(find_corrected_directory(root).split(sep)[-1])
     season_episode_pattern = re_compile(r"[. ]S(\d{2})[ .]?E(\d{2})", IGNORECASE)
     quality_pattern = re_compile(r"[. ](\d{3,4}p)", IGNORECASE)
 
@@ -40,7 +41,7 @@ def _create_name(root: str, file: str) -> str:
 
     return create_name(
         [show_name, season_episode],
-        os_path.splitext(file)[1],
+        splitext(file)[1],
         quality_match.group(1) if quality_match else None,
     )
 
@@ -64,15 +65,15 @@ def move(root: str, file: str) -> str:
     season_match = re_compile(r"S(\d{2})", IGNORECASE).search(new_name)
     season = int(season_match.group(1)) if season_match else 0
 
-    correct_path = os_path.join(find_corrected_directory(root), f"Season {season:02d}")
+    correct_path = join(find_corrected_directory(root), f"Season {season:02d}")
 
-    old_path = os_path.join(root, file)
-    new_path = os_path.join(correct_path, new_name)
+    old_path = join(root, file)
+    new_path = join(correct_path, new_name)
 
     if root == correct_path:
         return old_path
 
-    if not os_path.exists(correct_path):
+    if not exists(correct_path):
         makedirs(correct_path)
 
     move_file(old_path, new_path)

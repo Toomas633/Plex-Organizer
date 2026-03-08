@@ -8,13 +8,16 @@ Plex-managed folders are always skipped.
 """
 
 from __future__ import annotations
+
 from hashlib import sha256
-from os import listdir, path as os_path, remove, walk
+from os import listdir, remove, walk
+from os.path import abspath, dirname, isdir, join, isfile, splitext, basename, exists
 from re import sub as re_sub, MULTILINE, search, findall
 from tempfile import NamedTemporaryFile
 from typing import Tuple, Any, Dict, List, Optional, Sequence
 from langdetect import DetectorFactory, detect_langs
 from langdetect.lang_detect_exception import LangDetectException
+
 from ..config import get_analyze_embedded_subtitles, get_enable_subtitle_embedding
 from ..const import (
     ISO639_1_TO_2,
@@ -75,7 +78,7 @@ def _filename_suggests_sdh(sub_path: str) -> bool:
 
     Note: We intentionally do not label "cc"; user requested no CC tag.
     """
-    stem = os_path.splitext(os_path.basename(sub_path))[0].casefold()
+    stem = splitext(basename(sub_path))[0].casefold()
     return bool(search(r"(^|[\W_])(sdh|hearing[\W_]*impaired)([\W_]|$)", stem))
 
 
@@ -93,7 +96,7 @@ def _text_suggests_sdh(raw_text: str) -> bool:
 
 def _detect_subtitle_language_and_sdh(sub_path: str) -> tuple[Optional[str], bool]:
     """Detect (language, SDH) for a text subtitle file best-effort."""
-    if os_path.splitext(sub_path)[1].lower() not in TEXT_SUBTITLE_EXTENSIONS:
+    if splitext(sub_path)[1].lower() not in TEXT_SUBTITLE_EXTENSIONS:
         return (None, False)
 
     raw = _read_text_best_effort(sub_path)
@@ -275,7 +278,7 @@ def _get_overrides(
 
 def _tag_embedded_subtitle_languages(video_path: str) -> None:
     """Detect and tag missing language metadata for already-embedded subtitle streams."""
-    if not os_path.isfile(video_path):
+    if not isfile(video_path):
         return
 
     ffmpeg = get_ffmpeg()
@@ -312,7 +315,7 @@ def _tag_embedded_subtitle_languages(video_path: str) -> None:
         replace_and_restore_timestamps(tmp_out, video_path)
     finally:
         try:
-            if os_path.exists(tmp_out):
+            if exists(tmp_out):
                 remove(tmp_out)
         except OSError:
             pass
@@ -320,7 +323,7 @@ def _tag_embedded_subtitle_languages(video_path: str) -> None:
 
 def _stem_lower(filename: str) -> str:
     """Return the lowercase filename stem (basename without extension)."""
-    return os_path.splitext(filename)[0].casefold()
+    return splitext(filename)[0].casefold()
 
 
 def _is_video(filename: str) -> bool:
@@ -349,8 +352,8 @@ def _list_immediate_subtitle_dirs(root: str) -> List[str]:
     for entry in entries:
         if not _is_subtitles_dir_name(entry):
             continue
-        candidate = os_path.join(root, entry)
-        if os_path.isdir(candidate):
+        candidate = join(root, entry)
+        if isdir(candidate):
             result.append(candidate)
     return result
 
@@ -363,13 +366,13 @@ def _gather_subtitle_files_under(directory: str) -> List[str]:
             continue
         for f in files:
             if _is_subtitle(f):
-                found.append(os_path.join(walk_root, f))
+                found.append(join(walk_root, f))
     return found
 
 
 def _is_text_subtitle_path(sub_path: str) -> bool:
     """Return True if subtitle path points to a text-based subtitle format."""
-    return os_path.splitext(sub_path)[1].lower() in TEXT_SUBTITLE_EXTENSIONS
+    return splitext(sub_path)[1].lower() in TEXT_SUBTITLE_EXTENSIONS
 
 
 def _normalized_subtitle_bytes_for_hash(sub_path: str) -> bytes:
@@ -389,19 +392,14 @@ def _normalized_subtitle_bytes_for_hash(sub_path: str) -> bytes:
 
 def _dedupe_subtitle_inputs(subtitle_paths: Sequence[str]) -> List[str]:
     """De-duplicate subtitle inputs by path + content hash (text normalized)."""
-    unique_paths = sorted({os_path.abspath(p) for p in subtitle_paths})
+    unique_paths = sorted({abspath(p) for p in subtitle_paths})
 
     idx_stems = {
-        os_path.splitext(p)[0].casefold()
-        for p in unique_paths
-        if p.lower().endswith(".idx")
+        splitext(p)[0].casefold() for p in unique_paths if p.lower().endswith(".idx")
     }
     pruned: List[str] = []
     for p in unique_paths:
-        if (
-            p.lower().endswith(".sub")
-            and os_path.splitext(p)[0].casefold() in idx_stems
-        ):
+        if p.lower().endswith(".sub") and splitext(p)[0].casefold() in idx_stems:
             continue
         pruned.append(p)
 
@@ -450,7 +448,7 @@ def _index_subtitles_by_stem(
     """Index subtitle files in *root* by lowercase stem."""
     subs_by_stem: Dict[str, List[str]] = {}
     for sub in subtitle_files:
-        subs_by_stem.setdefault(_stem_lower(sub), []).append(os_path.join(root, sub))
+        subs_by_stem.setdefault(_stem_lower(sub), []).append(join(root, sub))
     return subs_by_stem
 
 
@@ -476,7 +474,7 @@ def _match_same_folder_subtitles(
             if _subtitle_matches_video(video_stem, sub_stem):
                 matched.extend(sub_paths)
         if matched:
-            matches[os_path.join(root, video)] = matched
+            matches[join(root, video)] = matched
 
     return matches
 
@@ -484,24 +482,22 @@ def _match_same_folder_subtitles(
 def _scan_subtitle_dir(subs_dir: str) -> tuple[List[str], Dict[str, List[str]]]:
     """Return (first_level_dirs, subs_dir_by_stem) for a subtitle directory."""
     try:
-        first_level_dirs = [
-            d for d in listdir(subs_dir) if os_path.isdir(os_path.join(subs_dir, d))
-        ]
+        first_level_dirs = [d for d in listdir(subs_dir) if isdir(join(subs_dir, d))]
     except OSError:
         first_level_dirs = []
 
     try:
         subs_dir_files = [
-            os_path.join(subs_dir, f)
+            join(subs_dir, f)
             for f in listdir(subs_dir)
-            if os_path.isfile(os_path.join(subs_dir, f)) and _is_subtitle(f)
+            if isfile(join(subs_dir, f)) and _is_subtitle(f)
         ]
     except OSError:
         subs_dir_files = []
 
     subs_dir_by_stem: Dict[str, List[str]] = {}
     for p in subs_dir_files:
-        subs_dir_by_stem.setdefault(_stem_lower(os_path.basename(p)), []).append(p)
+        subs_dir_by_stem.setdefault(_stem_lower(basename(p)), []).append(p)
 
     return (first_level_dirs, subs_dir_by_stem)
 
@@ -519,7 +515,7 @@ def _match_subs_dir_for_video(
     for folder in first_level_dirs:
         if _video_folder_name_matches(video_filename, video_stem, folder):
             per_video_matches.extend(
-                _gather_subtitle_files_under(os_path.join(subs_dir, folder))
+                _gather_subtitle_files_under(join(subs_dir, folder))
             )
 
     if per_video_matches:
@@ -539,7 +535,7 @@ def _add_matches_from_subtitle_dir(
     """Add matches found under a single immediate Subs/Subtitles directory."""
     first_level_dirs, subs_dir_by_stem = _scan_subtitle_dir(subs_dir)
     for video in video_files:
-        video_path = os_path.join(root, video)
+        video_path = join(root, video)
         matched = _match_subs_dir_for_video(
             subs_dir,
             video,
@@ -551,7 +547,7 @@ def _add_matches_from_subtitle_dir(
 
     if len(video_files) == 1:
         _add_single_video_remaining_under_subs_dir(
-            plans, os_path.join(root, video_files[0]), subs_dir
+            plans, join(root, video_files[0]), subs_dir
         )
 
 
@@ -573,11 +569,7 @@ def _add_single_video_remaining_in_root(
 ) -> None:
     """When a folder contains one video, embed remaining subs in the same folder."""
     already = set(plans.get(video_path, []))
-    remaining = [
-        os_path.join(root, s)
-        for s in subtitle_files
-        if os_path.join(root, s) not in already
-    ]
+    remaining = [join(root, s) for s in subtitle_files if join(root, s) not in already]
     _extend_plan(plans, video_path, remaining)
 
 
@@ -616,13 +608,13 @@ def _discover_plans(directory: str) -> List[SubtitleMergePlan]:
 
         if len(video_files) == 1:
             _add_single_video_remaining_in_root(
-                plans, os_path.join(root, video_files[0]), root, subtitle_files
+                plans, join(root, video_files[0]), root, subtitle_files
             )
 
     result = [
         SubtitleMergePlan(
-            video_path=os_path.abspath(video_path),
-            subtitle_paths=tuple(sorted({os_path.abspath(p) for p in subs})),
+            video_path=abspath(video_path),
+            subtitle_paths=tuple(sorted({abspath(p) for p in subs})),
         )
         for video_path, subs in plans.items()
         if subs
@@ -636,7 +628,7 @@ def _mp4_compatible_subtitle_paths(paths: Sequence[str]) -> List[str]:
     ok_ext = (".srt", ".vtt")
     compatible: List[str] = []
     for p in paths:
-        if os_path.splitext(p)[1].lower() in ok_ext:
+        if splitext(p)[1].lower() in ok_ext:
             compatible.append(p)
         else:
             log_error(f"Skipping subtitle not compatible with MP4 mov_text: {p}")
@@ -647,9 +639,9 @@ def _embeddable_subtitles_for_video(
     video_path: str, subtitle_paths: Sequence[str]
 ) -> tuple[bool, List[str]]:
     """Return (is_mp4, subtitle_paths) after filtering to existing/compatible inputs."""
-    is_mp4 = os_path.splitext(video_path)[1].lower() == ".mp4"
+    is_mp4 = splitext(video_path)[1].lower() == ".mp4"
 
-    existing_subs = [p for p in subtitle_paths if os_path.isfile(p)]
+    existing_subs = [p for p in subtitle_paths if isfile(p)]
     if not existing_subs:
         return (is_mp4, [])
 
@@ -711,12 +703,10 @@ def _embed_subtitles(plan: SubtitleMergePlan) -> None:
 
     This is a best-effort operation. Failures are logged and do not raise.
     """
-    if is_plex_folder(plan.video_path) or is_plex_folder(
-        os_path.dirname(plan.video_path)
-    ):
+    if is_plex_folder(plan.video_path) or is_plex_folder(dirname(plan.video_path)):
         return
 
-    if not os_path.isfile(plan.video_path):
+    if not isfile(plan.video_path):
         log_error(f"Video file not found: {plan.video_path}")
         return
 
@@ -754,7 +744,7 @@ def _embed_subtitles(plan: SubtitleMergePlan) -> None:
         return
     finally:
         try:
-            if os_path.exists(tmp_path):
+            if exists(tmp_path):
                 remove(tmp_path)
         except OSError as e:
             log_error(f"Failed to clean up temporary file '{tmp_path}': {e}")
@@ -763,7 +753,7 @@ def _embed_subtitles(plan: SubtitleMergePlan) -> None:
 def _tag_embedded_subtitle_languages_for_videos(video_paths: list[str]) -> None:
     for video_path in video_paths:
         try:
-            if is_plex_folder(os_path.dirname(video_path)):
+            if is_plex_folder(dirname(video_path)):
                 continue
             _tag_embedded_subtitle_languages(video_path)
         except OSError:
