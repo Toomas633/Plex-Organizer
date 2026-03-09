@@ -1,5 +1,6 @@
 """Tests for plex_organizer.movie."""
 
+from pathlib import Path
 from unittest.mock import patch
 from pytest import mark
 
@@ -81,8 +82,8 @@ class TestCreateName:
 class TestMove:
     """Test movie move/rename."""
 
-    def test_moves_file_to_movies_root(self, tmp_path):
-        """Movie file is moved to the movies root directory."""
+    def test_moves_file_to_movie_subfolder(self, tmp_path):
+        """Movie file is moved into a movie-name subfolder under movies root."""
         movies_dir = tmp_path / "movies"
         sub_dir = movies_dir / "Inception.2010.1080p.BluRay"
         sub_dir.mkdir(parents=True)
@@ -92,12 +93,32 @@ class TestMove:
         result = move(str(movies_dir), str(sub_dir), src.name)
         assert str(movies_dir) in result
 
+        result_path = Path(result)
+        assert result_path.parent.parent == movies_dir
+
+    def test_folder_excludes_quality(self, tmp_path):
+        """Movie subfolder never includes the quality tag."""
+        movies_dir = tmp_path / "movies"
+        sub_dir = movies_dir / "Inception.2010.1080p.BluRay"
+        sub_dir.mkdir(parents=True)
+        src = sub_dir / "Inception.2010.1080p.BluRay.x264-GROUP.mkv"
+        src.write_text("video")
+
+        with patch("plex_organizer.utils.get_include_quality", return_value=True):
+            result = move(str(movies_dir), str(sub_dir), src.name)
+
+        result_path = Path(result)
+        assert "1080p" in result_path.name
+        assert "1080p" not in result_path.parent.name
+        assert result_path.parent.name == "Inception (2010)"
+
     def test_same_source_and_dest_returns_path(self, tmp_path):
         """When source and dest match, the existing path is returned."""
         movies_dir = tmp_path / "movies"
-        movies_dir.mkdir(parents=True)
-        src = movies_dir / "Inception (2010).mkv"
+        movie_folder = movies_dir / "Inception (2010)"
+        movie_folder.mkdir(parents=True)
+        src = movie_folder / "Inception (2010).mkv"
         src.write_text("video")
 
-        result = move(str(movies_dir), str(movies_dir), src.name)
+        result = move(str(movies_dir), str(movie_folder), src.name)
         assert result == str(src)

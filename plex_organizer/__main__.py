@@ -15,15 +15,7 @@ folder containing ``tv/`` and/or ``movies/``), and performs these steps:
 It can also remove a completed torrent from qBittorrent when a torrent hash is provided.
 """
 
-from os import (
-    walk,
-    remove,
-    listdir,
-    rmdir,
-    sep,
-    environ,
-    getuid,
-)
+from os import walk, remove, listdir, rmdir, sep, environ
 from os.path import join, normcase
 from fcntl import flock, LOCK_EX, LOCK_NB
 from time import sleep
@@ -65,6 +57,7 @@ from .indexing import (
     should_index_video,
     collect_indexed_videos,
     index_root_for_path,
+    migrate_show_indexes_to_tv_root,
 )
 
 # pylint: enable=wrong-import-position
@@ -209,6 +202,13 @@ def _get_video_files_to_process(
 
 def _process_directory(directory: str):
     """Run the full organizer pipeline for a single directory tree."""
+    if is_tv_dir(directory):
+        migrated = migrate_show_indexes_to_tv_root(directory)
+        if migrated:
+            log_debug(
+                f"Auto-migrated {migrated} per-show index(es) to TV root: {directory}"
+            )
+
     indexed_videos = collect_indexed_videos(directory)
     videos_to_process = [p for p, is_done in indexed_videos.items() if not is_done]
 
@@ -250,9 +250,6 @@ def main():
         help="Optional torrent hash to remove from qBittorrent",
     )
     args = parser.parse_args()
-
-    if getuid() != 0:
-        parser.error("plex-organizer must be run as root.")
 
     start_dir = args.start_dir
     torrent_hash = args.torrent_hash

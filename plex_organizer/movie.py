@@ -4,8 +4,9 @@ to standardized formats and directories, including handling Plex folders
 and logging errors or duplicates.
 """
 
-from os.path import join, splitext
-from re import match as re_match
+from os import makedirs
+from os.path import join, splitext, exists
+from re import match as re_match, sub as re_sub
 from .log import log_error
 from .const import MOVIE_CORRECT_NAME_RE
 from .utils import move_file, create_name, capitalize, find_corrected_directory
@@ -77,11 +78,19 @@ def move(directory: str, root: str, file: str) -> str:
     Returns:
         None
     """
+    new_name = _create_name(file)
+    movie_folder = re_sub(r" \d{3,4}p$", "", splitext(new_name)[0])
+    movies_root = find_corrected_directory(directory)
+    movie_dir = join(movies_root, movie_folder)
+
     source_path = join(root, file)
-    destination_path = join(find_corrected_directory(directory), _create_name(file))
+    destination_path = join(movie_dir, new_name)
 
     if source_path == destination_path:
         return destination_path
+
+    if not exists(movie_dir):
+        makedirs(movie_dir)
 
     move_file(source_path, destination_path)
     return destination_path

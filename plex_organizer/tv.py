@@ -50,7 +50,7 @@ def move(root: str, file: str) -> str:
     """
     Renames and moves a TV episode file to its correct season folder.
 
-    The file is moved to: "<directory>/<ShowName>/Season <xx>/"
+    The file is moved to: "<directory>/<ShowName>/Season <x>/"
     If the season cannot be determined, the file remains in place.
 
     Args:
@@ -65,7 +65,7 @@ def move(root: str, file: str) -> str:
     season_match = re_compile(r"S(\d{2})", IGNORECASE).search(new_name)
     season = int(season_match.group(1)) if season_match else 0
 
-    correct_path = join(find_corrected_directory(root), f"Season {season:02d}")
+    correct_path = join(find_corrected_directory(root), f"Season {season}")
 
     old_path = join(root, file)
     new_path = join(correct_path, new_name)

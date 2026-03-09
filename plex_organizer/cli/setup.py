@@ -9,6 +9,7 @@ numbered menu with ``q`` to quit:
 4. Run the index generator for a media folder
 5. Kill running organizers
 6. Custom run (pick individual pipeline steps)
+7. Migrate old per-show TV indexes to TV root
 """
 
 from collections.abc import Callable
@@ -42,11 +43,17 @@ from .. import config as _config
 from .._paths import data_dir
 from ..audio.tagging import tag_audio_track_languages
 from ..const import VIDEO_EXTENSIONS
-from ..indexing import index_root_for_path, mark_indexed, should_index_video
+from ..indexing import (
+    index_root_for_path,
+    mark_indexed,
+    migrate_show_indexes_to_tv_root,
+    prune_index,
+    should_index_video,
+)
 from ..subs.embedding import merge_subtitles_in_directory
 from ..subs.fetching import fetch_subtitles_in_directory
 from ..subs.syncing import sync_subtitles_in_directory
-from ..utils import is_plex_folder, is_script_temp_file
+from ..utils import is_main_folder, is_plex_folder, is_script_temp_file
 from ..__main__ import (
     _analyze_video_languages,
     _delete_empty_directories,
@@ -58,6 +65,7 @@ from .generate_indexes import generate_indexes
 from .kill import run as _kill_run
 
 __all__ = [
+    "_expand_folder",
     "_run_full_pipeline",
     "_run_embed_subs",
     "_run_fetch_subs",
@@ -386,20 +394,76 @@ def _action_kill_organizers(**_kwargs) -> None:
     print()
 
 
+def _action_migrate_tv_indexes(input_fn=input) -> None:
+    """Migrate old per-show TV index files into a single TV-root index."""
+    print()
+    try:
+        folder = input_fn("  TV root folder (e.g. /media/tv): ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return
+
+    if not folder:
+        print(f"\n  {_warn('No path provided.')}\n")
+        return
+
+    folder = abspath(expanduser(folder))
+    if not isdir(folder):
+        print(f"\n  {_err('Not a directory:')} {folder}\n")
+        return
+
+    try:
+        count = migrate_show_indexes_to_tv_root(folder)
+        if count:
+            print(
+                f"\n  {_key('Migration complete.')} "
+                f"Merged {count} per-show index(es) into {_dim(folder)}\n"
+            )
+        else:
+            print(f"\n  {_dim('No per-show index files found to migrate.')}\n")
+    except Exception as exc:  # pylint: disable=broad-except
+        print(f"\n  {_err(f'Migration failed: {exc}')}\n")
+
+
+def _expand_folder(folder: str) -> list[str]:
+    """Expand *folder* into per-library directories when it is a main folder.
+
+    When *folder* is a main folder (contains ``tv/`` and/or ``movies/``
+    subfolders) the returned list contains the existing subdirectory paths.
+    Otherwise the original *folder* is returned as-is so single-library
+    directories keep working.
+    """
+    if is_main_folder(folder):
+        dirs = []
+        for sub in ("tv", "movies"):
+            candidate = join(folder, sub)
+            if isdir(candidate):
+                dirs.append(candidate)
+        return dirs if dirs else [folder]
+    return [folder]
+
+
 def _update_index_after_custom_run(folder: str) -> None:
-    """Walk *folder* and mark any un-indexed video files as indexed."""
-    for root, _, files in _walk(folder):
-        if is_plex_folder(root):
-            continue
-        for f in files:
-            if is_script_temp_file(f):
+    """Walk *folder* and mark any un-indexed video files as indexed.
+
+    Also prunes stale entries whose files no longer exist on disk (e.g.
+    after a rename/move operation).
+    """
+    for directory in _expand_folder(folder):
+        index_root = index_root_for_path(directory, directory)
+        prune_index(index_root)
+
+        for root, _, files in _walk(directory):
+            if is_plex_folder(root):
                 continue
-            if not f.lower().endswith(VIDEO_EXTENSIONS):
-                continue
-            video_path = join(root, f)
-            index_root = index_root_for_path(folder, root)
-            if should_index_video(index_root, video_path):
-                mark_indexed(index_root, video_path)
+            for f in files:
+                if is_script_temp_file(f):
+                    continue
+                if not f.lower().endswith(VIDEO_EXTENSIONS):
+                    continue
+                video_path = join(root, f)
+                if should_index_video(index_root, video_path):
+                    mark_indexed(index_root, video_path)
 
 
 def _find_all_videos(folder: str) -> list[str]:
@@ -511,21 +575,22 @@ def _run_full_pipeline(folder: str, input_fn=input) -> None:
     settings = _collect_pipeline_settings(input_fn)
     print()
 
-    all_videos = _find_all_videos(folder)
-    no_index = _no_index_video_map(folder)
+    for directory in _expand_folder(folder):
+        all_videos = _find_all_videos(directory)
+        no_index = _no_index_video_map(directory)
 
-    with _pipeline_patches(settings):
-        merge_subtitles_in_directory(folder, video_paths=all_videos)
-        fetch_subtitles_in_directory(folder, video_paths=all_videos)
-        sync_subtitles_in_directory(folder, video_paths=all_videos)
+        with _pipeline_patches(settings):
+            merge_subtitles_in_directory(directory, video_paths=all_videos)
+            fetch_subtitles_in_directory(directory, video_paths=all_videos)
+            sync_subtitles_in_directory(directory, video_paths=all_videos)
 
-        for root, _, files in _walk(folder, topdown=False):
-            videos = _get_video_files_to_process(root, files, no_index)
-            _analyze_video_languages(root, videos)
-            _delete_unwanted_files(root, files)
-            _move_directories(folder, root, videos)
+            for root, _, files in _walk(directory, topdown=False):
+                videos = _get_video_files_to_process(root, files, no_index)
+                _analyze_video_languages(root, videos)
+                _delete_unwanted_files(root, files)
+                _move_directories(directory, root, videos)
 
-        _delete_empty_directories(folder)
+            _delete_empty_directories(directory)
 
     _update_index_after_custom_run(folder)
 
@@ -535,18 +600,19 @@ def _run_embed_subs(folder: str, input_fn=input) -> None:
     analyze = _prompt_yes_no(input_fn, "Analyze already-embedded subtitles?")
     print()
 
-    vids = _find_all_videos(folder)
-    with (
-        patch(
-            "plex_organizer.subs.embedding.get_enable_subtitle_embedding",
-            return_value=True,
-        ),
-        patch(
-            "plex_organizer.subs.embedding.get_analyze_embedded_subtitles",
-            return_value=analyze,
-        ),
-    ):
-        merge_subtitles_in_directory(folder, video_paths=vids)
+    for directory in _expand_folder(folder):
+        vids = _find_all_videos(directory)
+        with (
+            patch(
+                "plex_organizer.subs.embedding.get_enable_subtitle_embedding",
+                return_value=True,
+            ),
+            patch(
+                "plex_organizer.subs.embedding.get_analyze_embedded_subtitles",
+                return_value=analyze,
+            ),
+        ):
+            merge_subtitles_in_directory(directory, video_paths=vids)
 
     _update_index_after_custom_run(folder)
 
@@ -561,23 +627,25 @@ def _run_fetch_subs(folder: str, input_fn=input) -> None:
         print(f"  {_warn('No languages specified, skipping.')}\n")
         return
 
-    vids = _find_all_videos(folder)
-    with patch(
-        "plex_organizer.subs.fetching.get_fetch_subtitles",
-        return_value=langs,
-    ):
-        fetch_subtitles_in_directory(folder, video_paths=vids)
+    for directory in _expand_folder(folder):
+        vids = _find_all_videos(directory)
+        with patch(
+            "plex_organizer.subs.fetching.get_fetch_subtitles",
+            return_value=langs,
+        ):
+            fetch_subtitles_in_directory(directory, video_paths=vids)
 
     _update_index_after_custom_run(folder)
 
 
 def _run_sync_subs(folder: str, **_kwargs) -> None:
-    vids = _find_all_videos(folder)
-    with patch(
-        "plex_organizer.subs.syncing.get_sync_subtitles",
-        return_value=True,
-    ):
-        sync_subtitles_in_directory(folder, video_paths=vids)
+    for directory in _expand_folder(folder):
+        vids = _find_all_videos(directory)
+        with patch(
+            "plex_organizer.subs.syncing.get_sync_subtitles",
+            return_value=True,
+        ):
+            sync_subtitles_in_directory(directory, video_paths=vids)
 
     _update_index_after_custom_run(folder)
 
@@ -587,19 +655,21 @@ def _run_tag_audio(folder: str, input_fn=input) -> None:
     cpu = _prompt_int(input_fn, "CPU threads for Whisper", 2)
     print()
 
-    with patch(
-        "plex_organizer.audio.tagging.get_cpu_threads",
-        return_value=cpu,
-    ):
-        for video_path in _find_all_videos(folder):
-            tag_audio_track_languages(video_path)
+    for directory in _expand_folder(folder):
+        with patch(
+            "plex_organizer.audio.tagging.get_cpu_threads",
+            return_value=cpu,
+        ):
+            for video_path in _find_all_videos(directory):
+                tag_audio_track_languages(video_path)
 
     _update_index_after_custom_run(folder)
 
 
 def _run_cleanup(folder: str, **_kwargs) -> None:
-    for root, _, files in _walk(folder, topdown=False):
-        _delete_unwanted_files(root, files)
+    for directory in _expand_folder(folder):
+        for root, _, files in _walk(directory, topdown=False):
+            _delete_unwanted_files(root, files)
 
     _update_index_after_custom_run(folder)
 
@@ -611,35 +681,37 @@ def _run_rename_move(folder: str, input_fn=input) -> None:
     del_dups = _prompt_yes_no(input_fn, "Delete duplicates?", default=False)
     print()
 
-    no_index = _no_index_video_map(folder)
-    with (
-        patch(
-            "plex_organizer.utils.get_include_quality",
-            return_value=inc_quality,
-        ),
-        patch(
-            "plex_organizer.utils.get_capitalize",
-            return_value=do_capitalize,
-        ),
-        patch(
-            "plex_organizer.utils.get_delete_duplicates",
-            return_value=del_dups,
-        ),
-    ):
-        for root, _, files in _walk(folder, topdown=False):
-            videos = [
-                f
-                for f in files
-                if f.lower().endswith(VIDEO_EXTENSIONS)
-                and not no_index.get(join(root, f), False)
-            ]
-            _move_directories(folder, root, videos)
+    for directory in _expand_folder(folder):
+        no_index = _no_index_video_map(directory)
+        with (
+            patch(
+                "plex_organizer.utils.get_include_quality",
+                return_value=inc_quality,
+            ),
+            patch(
+                "plex_organizer.utils.get_capitalize",
+                return_value=do_capitalize,
+            ),
+            patch(
+                "plex_organizer.utils.get_delete_duplicates",
+                return_value=del_dups,
+            ),
+        ):
+            for root, _, files in _walk(directory, topdown=False):
+                videos = [
+                    f
+                    for f in files
+                    if f.lower().endswith(VIDEO_EXTENSIONS)
+                    and not no_index.get(join(root, f), False)
+                ]
+                _move_directories(directory, root, videos)
 
     _update_index_after_custom_run(folder)
 
 
 def _run_delete_empty(folder: str, **_kwargs) -> None:
-    _delete_empty_directories(folder)
+    for directory in _expand_folder(folder):
+        _delete_empty_directories(directory)
 
     _update_index_after_custom_run(folder)
 
@@ -755,6 +827,123 @@ def _action_custom_run(input_fn=input) -> None:
         _toggle_steps(choice, selected_steps)
 
 
+_CONFIG_KEY_TYPES: dict[tuple[str, str], str] = {
+    ("qBittorrent", "host"): "str",
+    ("qBittorrent", "username"): "str",
+    ("qBittorrent", "password"): "str",
+    ("Settings", "delete_duplicates"): "bool",
+    ("Settings", "include_quality"): "bool",
+    ("Settings", "capitalize"): "bool",
+    ("Settings", "cpu_threads"): "int",
+    ("Logging", "enable_logging"): "bool",
+    ("Logging", "log_file"): "str",
+    ("Logging", "clear_log"): "bool",
+    ("Logging", "timestamped_log_files"): "bool",
+    ("Logging", "level"): "str",
+    ("Audio", "enable_audio_tagging"): "bool",
+    ("Audio", "whisper_model_size"): "str",
+    ("Subtitles", "enable_subtitle_embedding"): "bool",
+    ("Subtitles", "analyze_embedded_subtitles"): "bool",
+    ("Subtitles", "fetch_subtitles"): "str",
+    ("Subtitles", "subtitle_providers"): "str",
+    ("Subtitles", "sync_subtitles"): "bool",
+}
+
+
+def _print_config(config: ConfigParser) -> list[tuple[str, str]]:
+    """Print the current config and return a flat list of (section, key) pairs.
+
+    Each option is printed with a sequential number so the user can pick one.
+    Returns the ordered list for index look-up.
+    """
+    entries: list[tuple[str, str]] = []
+    for section in config.sections():
+        print(f"\n    {_heading(f'[{section}]')}")
+        for key in config.options(section):
+            idx = len(entries) + 1
+            value = config.get(section, key)
+            type_hint = _CONFIG_KEY_TYPES.get((section, key), "str")
+            hint = f" {_dim(f'({type_hint})')}" if type_hint != "str" else ""
+            print(f"      {_key(str(idx)):>8s}. {key} = {_CYAN}{value}{_RESET}{hint}")
+            entries.append((section, key))
+    return entries
+
+
+def _validate_config_value(type_hint: str, value: str) -> str | None:
+    """Return an error message if *value* is invalid for *type_hint*, else None."""
+    if type_hint == "bool" and value.lower() not in ("true", "false"):
+        return "Value must be 'true' or 'false'."
+    if type_hint == "int":
+        try:
+            int(value)
+        except ValueError:
+            return "Value must be an integer."
+    return None
+
+
+def _action_edit_config(input_fn=input) -> None:
+    """Interactive config editor.
+
+    Shows all config sections and options with sequential numbers.  The user
+    picks a number to edit, enters a new value, and the change is written to
+    disk immediately.  ``q`` returns to the main menu.
+    """
+    _config.ensure_config_exists()
+    config = ConfigParser()
+    config.read(_config_path())
+
+    while True:
+        print(f"\n  {_heading('Configuration')}  {_dim(_config_path())}")
+        entries = _print_config(config)
+        print(f"\n      {_key('q')}. Back to menu\n")
+
+        try:
+            choice = input_fn("    Select option to edit: ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return
+
+        if choice == "q":
+            return
+
+        try:
+            idx = int(choice)
+        except ValueError:
+            print(f"\n  {_err('Invalid option.')}")
+            continue
+
+        if not 1 <= idx <= len(entries):
+            print(f"\n  {_err('Invalid option.')}")
+            continue
+
+        section, key = entries[idx - 1]
+        current = config.get(section, key)
+        type_hint = _CONFIG_KEY_TYPES.get((section, key), "str")
+
+        if type_hint == "bool":
+            # Toggle boolean values directly
+            new_value = "false" if current.lower() == "true" else "true"
+            print(f"\n    {key}: {_DIM}{current}{_RESET} → {_CYAN}{new_value}{_RESET}")
+        else:
+            try:
+                new_value = input_fn(f"    New value for {key} [{current}]: ").strip()
+            except (EOFError, KeyboardInterrupt):
+                print()
+                continue
+            if not new_value:
+                continue
+
+        error = _validate_config_value(type_hint, new_value)
+        if error:
+            print(f"\n  {_err(error)}")
+            continue
+
+        config.set(section, key, new_value)
+        with open(_config_path(), "w", encoding="utf-8") as f:
+            config.write(f)
+        print(f"    {_key('Saved.')}")
+
+
 MENU_OPTIONS: list[tuple[str, Callable[..., None]]] = [
     ("Show organizer folder", _action_open_folder),
     ("View latest log", _action_view_log),
@@ -762,6 +951,8 @@ MENU_OPTIONS: list[tuple[str, Callable[..., None]]] = [
     ("Generate indexes", _action_generate_indexes),
     ("Kill running organizers", _action_kill_organizers),
     ("Custom run", _action_custom_run),
+    ("Migrate TV indexes to root", _action_migrate_tv_indexes),
+    ("Edit configuration", _action_edit_config),
 ]
 
 

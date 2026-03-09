@@ -84,7 +84,7 @@ class TestDeleteUnwantedDirectories:
 
     def test_preserves_normal_folders(self, tmp_path):
         """Non-unwanted folders are preserved."""
-        season = tmp_path / "Season 01"
+        season = tmp_path / "Season 1"
         season.mkdir()
 
         _delete_unwanted_directories(str(tmp_path))
@@ -290,11 +290,11 @@ class TestMoveDirectories:
 
     @patch("plex_organizer.__main__.mark_indexed")
     @patch("plex_organizer.__main__.should_index_video", return_value=True)
-    @patch("plex_organizer.__main__.index_root_for_path", return_value="/media/tv/Show")
+    @patch("plex_organizer.__main__.index_root_for_path", return_value="/media/tv")
     @patch("plex_organizer.__main__.tv_move", return_value="/media/tv/Show/S01E01.mkv")
     def test_moves_tv_file(self, mock_tv, _ir, _si, _mock_mark):
         """TV file is dispatched to tv_move."""
-        _move_directories("/media", "/media/tv/Show/Season 01", ["ep.mkv"])
+        _move_directories("/media/tv", "/media/tv/Show/Season 01", ["ep.mkv"])
         mock_tv.assert_called_once_with("/media/tv/Show/Season 01", "ep.mkv")
 
     @patch("plex_organizer.__main__.mark_indexed")

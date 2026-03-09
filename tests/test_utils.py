@@ -28,7 +28,7 @@ class TestIsPlexFolder:
 
     def test_false_when_not_present(self):
         """Path without 'Plex Versions' is not detected."""
-        assert not is_plex_folder("/media/tv/Show/Season 01/file.mkv")
+        assert not is_plex_folder("/media/tv/Show/Season 1/file.mkv")
 
     def test_false_for_substring_match(self):
         """Partial match of 'Plex Versions' is not detected."""
@@ -168,7 +168,7 @@ class TestIsTvDir:
 
     def test_true_for_tv_in_path(self):
         """Path with 'tv' component is detected."""
-        assert is_tv_dir("/media/tv/Show/Season 01")
+        assert is_tv_dir("/media/tv/Show/Season 1")
 
     def test_false_for_movies(self):
         """Movie path is not detected as TV."""
@@ -283,7 +283,7 @@ class TestFindCorrectedDirectory:
 
     def test_tv_show_path_truncated(self):
         """TV path is truncated to the show root."""
-        result = find_corrected_directory("/media/data/tv/Breaking Bad/Season 01")
+        result = find_corrected_directory("/media/data/tv/Breaking Bad/Season 1")
         assert result == "/media/data/tv/Breaking Bad"
 
     def test_relative_movies(self):
@@ -293,5 +293,5 @@ class TestFindCorrectedDirectory:
 
     def test_relative_tv(self):
         """Relative TV path is truncated correctly."""
-        result = find_corrected_directory("data/tv/Show/Season 01")
+        result = find_corrected_directory("data/tv/Show/Season 1")
         assert result == os.path.join("data", "tv", "Show")

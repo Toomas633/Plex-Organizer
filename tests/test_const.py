@@ -144,9 +144,9 @@ class TestTVCorrectSeasonRegex:
 
     def test_matches_season_folder(self):
         """Verify regex matches a correctly formatted season folder."""
-        m = TV_CORRECT_SEASON_RE.match("Season 01")
+        m = TV_CORRECT_SEASON_RE.match("Season 1")
         assert m
-        assert m.group(1) == "01"
+        assert m.group(1) == "1"
 
     def test_rejects_wrong_format(self):
         """Verify regex rejects incorrectly formatted season folders."""

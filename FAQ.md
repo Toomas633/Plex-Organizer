@@ -51,3 +51,21 @@ Version 6.0 changed how Plex Organizer is installed and updated. The old method 
 ### Do I still need root?
 
 Yes — `sudo` is still required to run the organizer.
+
+## Migrating TV indexes to the root TV folder
+
+Starting with the latest version, Plex Organizer stores a single `.plex_organizer.index` file in the TV library root (`tv/`) instead of one per show (`tv/<Show>/`). If you are upgrading from a version that used per-show indexes, run the migration tool to merge them:
+
+```bash
+plex-organizer-setup
+# Select option 7: "Migrate TV indexes to root"
+# Enter your TV root folder (e.g. /media/tv)
+```
+
+This will:
+
+1. Find all `.plex_organizer.index` files inside show sub-directories.
+2. Merge their entries into a single index at the TV root.
+3. Remove the old per-show index files.
+
+Already-processed episodes will continue to be skipped after migration — no re-processing occurs.

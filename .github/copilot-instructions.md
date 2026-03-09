@@ -13,8 +13,8 @@
   - Delete empty folders
   - (Optional) remove a completed torrent via qBittorrent
 - Media-specific logic lives in `plex_organizer/tv.py` and `plex_organizer/movie.py`:
-  - TV rename format: `Show Name SxxExx Quality.ext` (quality included only when `[Settings] include_quality = true`), then move into `tv/<Show>/Season <xx>/`.
-  - Movie rename format: `Name (Year) Quality.ext` (quality included only when `[Settings] include_quality = true`), then move into the target movies folder.
+  - TV rename format: `Show Name SxxExx Quality.ext` (quality included only when `[Settings] include_quality = true`), then move into `tv/<Show>/Season <x>/`.
+  - Movie rename format: `Name (Year) Quality.ext` (quality included only when `[Settings] include_quality = true`), then move into `movies/<Name (Year)>/`. The subfolder never includes quality.
 - File/dir filtering and shared behaviors:
   - Constants in `plex_organizer/const.py` (`VIDEO_EXTENSIONS`, `EXT_FILTER`, `UNWANTED_FOLDERS`, subtitle extension lists, ISO 639 mappings).
   - Helpers in `plex_organizer/utils.py` (duplicate handling, capitalization rules, "Plex Versions" detection, start-dir mode detection).
@@ -112,7 +112,7 @@ tests/
 - Indexing is best-effort and stored as JSON in `.plex_organizer.index`.
 - Index root rules (see `indexing.py`):
   - Movies: index is stored in the movies root.
-  - TV: index is stored in the show root (`tv/<Show>/`).
+  - TV: index is stored in the TV root (`tv/`).
 - Only videos that are already in the organizer's final layout are marked as indexed (prevents skipping raw/unprocessed names).
 
 ## How the organizer decides what to process

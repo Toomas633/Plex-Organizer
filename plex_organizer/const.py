@@ -110,7 +110,7 @@ INDEX_FILENAME = ".plex_organizer.index"
 
 MOVIE_CORRECT_NAME_RE = re_compile(r"^.+ \(\d{4}\)(?: \d{3,4}p)?\.[\w]+$", flags=0)
 TV_CORRECT_NAME_RE = re_compile(r"^.+ S(\d{2})E(\d{2})(?: \d{3,4}p)?\.[\w]+$", flags=0)
-TV_CORRECT_SEASON_RE = re_compile(r"^Season (\d{2})$", flags=0)
+TV_CORRECT_SEASON_RE = re_compile(r"^Season (\d+)$", flags=0)
 
 TEXT_SUB_CODECS = frozenset(
     {"subrip", "srt", "ass", "ssa", "mov_text", "webvtt", "text"}

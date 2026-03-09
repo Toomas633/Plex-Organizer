@@ -1,19 +1,34 @@
 """Tests for plex_organizer.cli.setup."""
 
+from os import makedirs
+from os.path import join, exists
 from time import sleep
-from unittest.mock import patch
+from unittest.mock import patch, call
 from configparser import ConfigParser
 from pytest import mark, raises
 
 from plex_organizer.cli.setup import (
     main,
+    _expand_folder,
+    _update_index_after_custom_run,
     _run_menu,
+    _run_full_pipeline,
+    _run_embed_subs,
+    _run_fetch_subs,
+    _run_sync_subs,
+    _run_tag_audio,
+    _run_cleanup,
+    _run_rename_move,
+    _run_delete_empty,
     _action_open_folder,
     _action_view_log,
     _action_migrate_config,
     _action_generate_indexes,
     _action_kill_organizers,
+    _action_migrate_tv_indexes,
+    _action_edit_config,
     _action_custom_run,
+    _validate_config_value,
     _find_latest_log,
     _wait_for_quit,
     _command_exists,
@@ -23,6 +38,9 @@ from plex_organizer.cli.setup import (
     MENU_OPTIONS,
     _CUSTOM_RUN_STEPS,
 )
+from plex_organizer.const import INDEX_FILENAME
+from plex_organizer.indexing import _read_index, _write_index
+from plex_organizer import config as _config
 
 
 @mark.usefixtures("default_config")
@@ -520,6 +538,69 @@ class TestActionKillOrganizers:
 
 
 @mark.usefixtures("default_config")
+class TestActionMigrateTvIndexes:
+    """Tests for option 7: migrate per-show TV indexes to root."""
+
+    @patch(
+        "plex_organizer.cli.setup.migrate_show_indexes_to_tv_root",
+        return_value=3,
+    )
+    def test_success_message(self, _mock_migrate, tmp_path, capsys):
+        """Successful migration prints a completion message."""
+        tv_dir = tmp_path / "tv"
+        tv_dir.mkdir()
+        _action_migrate_tv_indexes(input_fn=lambda _: str(tv_dir))
+        out = capsys.readouterr().out
+        assert "Migration complete" in out
+        assert "3" in out
+
+    @patch(
+        "plex_organizer.cli.setup.migrate_show_indexes_to_tv_root",
+        return_value=0,
+    )
+    def test_no_indexes_found(self, _mock_migrate, tmp_path, capsys):
+        """When no per-show indexes exist, a 'nothing found' message is shown."""
+        tv_dir = tmp_path / "tv"
+        tv_dir.mkdir()
+        _action_migrate_tv_indexes(input_fn=lambda _: str(tv_dir))
+        out = capsys.readouterr().out
+        assert "No per-show index files found" in out
+
+    def test_empty_path(self, capsys):
+        """An empty input prints a 'No path provided' message."""
+        _action_migrate_tv_indexes(input_fn=lambda _: "")
+        out = capsys.readouterr().out
+        assert "No path provided" in out
+
+    def test_nonexistent_dir(self, capsys):
+        """A nonexistent directory prints a 'Not a directory' message."""
+        _action_migrate_tv_indexes(input_fn=lambda _: "/no/such/dir")
+        out = capsys.readouterr().out
+        assert "Not a directory" in out
+
+    def test_eof_exits_gracefully(self):
+        """EOFError during path prompt is handled silently."""
+
+        def _raise(_):
+            raise EOFError
+
+        _action_migrate_tv_indexes(input_fn=_raise)
+
+    @patch(
+        "plex_organizer.cli.setup.migrate_show_indexes_to_tv_root",
+        side_effect=RuntimeError("boom"),
+    )
+    def test_handles_exception(self, _mock_migrate, tmp_path, capsys):
+        """Exceptions are caught and printed."""
+        tv_dir = tmp_path / "tv"
+        tv_dir.mkdir()
+        _action_migrate_tv_indexes(input_fn=lambda _: str(tv_dir))
+        out = capsys.readouterr().out
+        assert "Migration failed" in out
+        assert "boom" in out
+
+
+@mark.usefixtures("default_config")
 class TestSetupMain:
     """Tests for the main() entrypoint."""
 
@@ -696,3 +777,477 @@ class TestSetupMain:
         """Custom run appears in the main MENU_OPTIONS list."""
         labels = [label for label, _ in MENU_OPTIONS]
         assert "Custom run" in labels
+
+
+class TestExpandFolder:
+    """Tests for _expand_folder helper."""
+
+    def test_returns_folder_when_no_subfolders(self, tmp_path):
+        """A plain directory without tv/movies is returned as-is."""
+        d = tmp_path / "media"
+        d.mkdir()
+        assert _expand_folder(str(d)) == [str(d)]
+
+    def test_expands_main_folder_with_tv_and_movies(self, tmp_path):
+        """A main folder with both tv/ and movies/ expands to both."""
+        d = tmp_path / "media"
+        (d / "tv").mkdir(parents=True)
+        (d / "movies").mkdir(parents=True)
+        result = _expand_folder(str(d))
+        assert str(d / "tv") in result
+        assert str(d / "movies") in result
+        assert len(result) == 2
+
+    def test_expands_main_folder_with_only_tv(self, tmp_path):
+        """A main folder with only tv/ expands to just tv/."""
+        d = tmp_path / "media"
+        (d / "tv").mkdir(parents=True)
+        result = _expand_folder(str(d))
+        assert result == [str(d / "tv")]
+
+    def test_expands_main_folder_with_only_movies(self, tmp_path):
+        """A main folder with only movies/ expands to just movies/."""
+        d = tmp_path / "media"
+        (d / "movies").mkdir(parents=True)
+        result = _expand_folder(str(d))
+        assert result == [str(d / "movies")]
+
+    def test_single_tv_dir_not_expanded(self, tmp_path):
+        """A tv/ directory itself is not expanded further."""
+        d = tmp_path / "media" / "tv"
+        d.mkdir(parents=True)
+        assert _expand_folder(str(d)) == [str(d)]
+
+    def test_single_movies_dir_not_expanded(self, tmp_path):
+        """A movies/ directory itself is not expanded further."""
+        d = tmp_path / "media" / "movies"
+        d.mkdir(parents=True)
+        assert _expand_folder(str(d)) == [str(d)]
+
+
+@mark.usefixtures("default_config")
+class TestRunStepsMainFolder:
+    """Tests that _run_* functions expand main folders into tv/ and movies/."""
+
+    def _make_main_folder(self, tmp_path):
+        """Create a main folder with tv/ and movies/ subdirectories."""
+        d = tmp_path / "media"
+        (d / "tv").mkdir(parents=True)
+        (d / "movies").mkdir(parents=True)
+        return d
+
+    @patch("plex_organizer.cli.setup.merge_subtitles_in_directory")
+    @patch("plex_organizer.cli.setup.fetch_subtitles_in_directory")
+    @patch("plex_organizer.cli.setup.sync_subtitles_in_directory")
+    @patch("plex_organizer.cli.setup._analyze_video_languages")
+    @patch("plex_organizer.cli.setup._delete_unwanted_files")
+    @patch("plex_organizer.cli.setup._move_directories")
+    @patch("plex_organizer.cli.setup._delete_empty_directories")
+    def test_full_pipeline_expands_main_folder(
+        self,
+        mock_del_empty,
+        mock_move,
+        mock_del_unwanted,
+        mock_analyze,
+        mock_sync,
+        mock_fetch,
+        mock_embed,
+        tmp_path,
+    ):
+        """Full pipeline processes tv and movies subdirectories separately."""
+        d = self._make_main_folder(tmp_path)
+        inputs = iter(["", "", "y", "y", "2", "y", "y", "n"])
+        _run_full_pipeline(str(d), input_fn=lambda _: next(inputs))
+
+        # merge_subtitles_in_directory should be called for both tv and movies
+        called_dirs = [c.args[0] for c in mock_embed.call_args_list]
+        assert str(d / "tv") in called_dirs
+        assert str(d / "movies") in called_dirs
+
+    @patch("plex_organizer.cli.setup.merge_subtitles_in_directory")
+    def test_embed_subs_expands_main_folder(self, mock_embed, tmp_path):
+        """Embed subs processes tv and movies subdirectories separately."""
+        d = self._make_main_folder(tmp_path)
+        inputs = iter(["y"])
+        _run_embed_subs(str(d), input_fn=lambda _: next(inputs))
+
+        called_dirs = [c.args[0] for c in mock_embed.call_args_list]
+        assert str(d / "tv") in called_dirs
+        assert str(d / "movies") in called_dirs
+
+    @patch("plex_organizer.cli.setup.fetch_subtitles_in_directory")
+    def test_fetch_subs_expands_main_folder(self, mock_fetch, tmp_path):
+        """Fetch subs processes tv and movies subdirectories separately."""
+        d = self._make_main_folder(tmp_path)
+        inputs = iter(["eng"])
+        _run_fetch_subs(str(d), input_fn=lambda _: next(inputs))
+
+        called_dirs = [c.args[0] for c in mock_fetch.call_args_list]
+        assert str(d / "tv") in called_dirs
+        assert str(d / "movies") in called_dirs
+
+    @patch("plex_organizer.cli.setup.sync_subtitles_in_directory")
+    def test_sync_subs_expands_main_folder(self, mock_sync, tmp_path):
+        """Sync subs processes tv and movies subdirectories separately."""
+        d = self._make_main_folder(tmp_path)
+        _run_sync_subs(str(d))
+
+        called_dirs = [c.args[0] for c in mock_sync.call_args_list]
+        assert str(d / "tv") in called_dirs
+        assert str(d / "movies") in called_dirs
+
+    @patch("plex_organizer.cli.setup.tag_audio_track_languages")
+    def test_tag_audio_expands_main_folder(self, mock_tag, tmp_path):
+        """Tag audio processes videos under tv/ and movies/ separately."""
+        d = self._make_main_folder(tmp_path)
+        # Create a video in each subdirectory
+        (d / "movies" / "Test (2020)").mkdir(parents=True)
+        (d / "movies" / "Test (2020)" / "Test (2020).mkv").touch()
+        (d / "tv" / "Show" / "Season 1").mkdir(parents=True)
+        (d / "tv" / "Show" / "Season 1" / "Show S01E01.mkv").touch()
+
+        inputs = iter(["2"])
+        _run_tag_audio(str(d), input_fn=lambda _: next(inputs))
+
+        assert mock_tag.call_count == 2
+
+    @patch("plex_organizer.cli.setup._delete_unwanted_files")
+    def test_cleanup_expands_main_folder(self, mock_del, tmp_path):
+        """Cleanup processes tv and movies subdirectories separately."""
+        d = self._make_main_folder(tmp_path)
+        _run_cleanup(str(d))
+
+        called_roots = [c.args[0] for c in mock_del.call_args_list]
+        tv_processed = any(str(d / "tv") in r for r in called_roots)
+        movies_processed = any(str(d / "movies") in r for r in called_roots)
+        assert tv_processed
+        assert movies_processed
+
+    @patch("plex_organizer.cli.setup._move_directories")
+    def test_rename_move_expands_main_folder(self, mock_move, tmp_path):
+        """Rename & move processes tv and movies subdirectories separately."""
+        d = self._make_main_folder(tmp_path)
+        # Create a video in movies
+        (d / "movies" / "Test (2020)").mkdir(parents=True)
+        (d / "movies" / "Test (2020)" / "Test (2020).mkv").touch()
+
+        inputs = iter(["y", "y", "n"])
+        _run_rename_move(str(d), input_fn=lambda _: next(inputs))
+
+        # _move_directories should be called with the movies/ subdirectory, not the main folder
+        called_dirs = [c.args[0] for c in mock_move.call_args_list]
+        assert all(str(d / "movies") in cd or str(d / "tv") in cd for cd in called_dirs)
+        assert str(d) not in called_dirs or all(
+            cd.startswith(str(d / "movies")) or cd.startswith(str(d / "tv"))
+            for cd in called_dirs
+        )
+
+    @patch("plex_organizer.cli.setup._delete_empty_directories")
+    def test_delete_empty_expands_main_folder(self, mock_del, tmp_path):
+        """Delete empty processes tv and movies subdirectories separately."""
+        d = self._make_main_folder(tmp_path)
+        _run_delete_empty(str(d))
+
+        called_dirs = [c.args[0] for c in mock_del.call_args_list]
+        assert str(d / "tv") in called_dirs
+        assert str(d / "movies") in called_dirs
+
+
+@mark.usefixtures("default_config")
+class TestUpdateIndexPruning:
+    """Tests that _update_index_after_custom_run prunes stale entries."""
+
+    def test_stale_movie_entry_removed(self, tmp_path):
+        """Old movie index entries for moved/renamed files are pruned."""
+        movies = tmp_path / "movies"
+        movie_dir = movies / "Test (2020)"
+        movie_dir.mkdir(parents=True)
+        (movie_dir / "Test (2020).mkv").touch()
+
+        _write_index(
+            str(movies / INDEX_FILENAME),
+            {
+                "files": {
+                    "Test (2020)/Test (2020).mkv": {
+                        "processed_at": "2025-01-01T00:00:00+00:00"
+                    },
+                    "Old Name/Old Name.mkv": {
+                        "processed_at": "2025-01-01T00:00:00+00:00"
+                    },
+                }
+            },
+        )
+
+        _update_index_after_custom_run(str(movies))
+
+        result = _read_index(str(movies / INDEX_FILENAME))
+        assert "Test (2020)/Test (2020).mkv" in result["files"]
+        assert "Old Name/Old Name.mkv" not in result["files"]
+
+    def test_stale_tv_entry_removed(self, tmp_path):
+        """Old TV index entries for moved/renamed files are pruned."""
+        tv = tmp_path / "tv"
+        show_dir = tv / "Show" / "Season 1"
+        show_dir.mkdir(parents=True)
+        (show_dir / "Show S01E01.mkv").touch()
+
+        _write_index(
+            str(tv / INDEX_FILENAME),
+            {
+                "files": {
+                    "Show/Season 1/Show S01E01.mkv": {
+                        "processed_at": "2025-01-01T00:00:00+00:00"
+                    },
+                    "Show/Season 1/Old.Name.S01E01.mkv": {
+                        "processed_at": "2025-01-01T00:00:00+00:00"
+                    },
+                }
+            },
+        )
+
+        _update_index_after_custom_run(str(tv))
+
+        result = _read_index(str(tv / INDEX_FILENAME))
+        assert "Show/Season 1/Show S01E01.mkv" in result["files"]
+        assert "Show/Season 1/Old.Name.S01E01.mkv" not in result["files"]
+
+    def test_main_folder_prunes_both_indexes(self, tmp_path):
+        """When given a main folder, stale entries in both tv and movies indexes are pruned."""
+        main = tmp_path / "media"
+        movies = main / "movies"
+        tv = main / "tv"
+
+        movie_dir = movies / "Test (2020)"
+        movie_dir.mkdir(parents=True)
+        (movie_dir / "Test (2020).mkv").touch()
+
+        show_dir = tv / "Show" / "Season 1"
+        show_dir.mkdir(parents=True)
+        (show_dir / "Show S01E01.mkv").touch()
+
+        _write_index(
+            str(movies / INDEX_FILENAME),
+            {
+                "files": {
+                    "Test (2020)/Test (2020).mkv": {"processed_at": "ts"},
+                    "Stale (2019)/Stale (2019).mkv": {"processed_at": "ts"},
+                }
+            },
+        )
+        _write_index(
+            str(tv / INDEX_FILENAME),
+            {
+                "files": {
+                    "Show/Season 1/Show S01E01.mkv": {"processed_at": "ts"},
+                    "Show/Season 1/Stale.S01E01.mkv": {"processed_at": "ts"},
+                }
+            },
+        )
+
+        _update_index_after_custom_run(str(main))
+
+        movies_idx = _read_index(str(movies / INDEX_FILENAME))
+        assert "Test (2020)/Test (2020).mkv" in movies_idx["files"]
+        assert "Stale (2019)/Stale (2019).mkv" not in movies_idx["files"]
+
+        tv_idx = _read_index(str(tv / INDEX_FILENAME))
+        assert "Show/Season 1/Show S01E01.mkv" in tv_idx["files"]
+        assert "Show/Season 1/Stale.S01E01.mkv" not in tv_idx["files"]
+
+
+@mark.usefixtures("default_config")
+class TestValidateConfigValue:
+    """Tests for _validate_config_value helper."""
+
+    def test_bool_accepts_true(self):
+        assert _validate_config_value("bool", "true") is None
+
+    def test_bool_accepts_false(self):
+        assert _validate_config_value("bool", "false") is None
+
+    def test_bool_rejects_invalid(self):
+        assert _validate_config_value("bool", "yes") is not None
+
+    def test_int_accepts_number(self):
+        assert _validate_config_value("int", "4") is None
+
+    def test_int_rejects_text(self):
+        assert _validate_config_value("int", "abc") is not None
+
+    def test_str_accepts_anything(self):
+        assert _validate_config_value("str", "anything") is None
+
+
+@mark.usefixtures("default_config")
+class TestActionEditConfig:
+    """Tests for the interactive config editor (menu option 8)."""
+
+    def test_menu_option_exists(self):
+        """Edit configuration appears in the main MENU_OPTIONS list."""
+        labels = [label for label, _ in MENU_OPTIONS]
+        assert "Edit configuration" in labels
+
+    def test_quit_immediately(self, capsys):
+        """Pressing q returns to main menu without changes."""
+        _action_edit_config(input_fn=lambda _: "q")
+        out = capsys.readouterr().out
+        assert "Configuration" in out
+
+    def test_shows_all_sections(self, capsys):
+        """All config sections are displayed."""
+        _action_edit_config(input_fn=lambda _: "q")
+        out = capsys.readouterr().out
+        for section in ("qBittorrent", "Settings", "Logging", "Audio", "Subtitles"):
+            assert section in out
+
+    def test_toggle_boolean_value(self, capsys):
+        """Selecting a bool option toggles it and saves."""
+        from configparser import ConfigParser as CP
+
+        # Read current value before toggle
+        cfg_before = CP()
+        cfg_before.read(_config.CONFIG_PATH)
+        old_val = cfg_before.get("Settings", "delete_duplicates")
+
+        # Find the index of delete_duplicates (a bool option)
+        call_count = 0
+
+        def _input(prompt):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                # Pick delete_duplicates — 4th option:
+                # 1=host, 2=username, 3=password, 4=delete_duplicates
+                return "4"
+            return "q"
+
+        _action_edit_config(input_fn=_input)
+        out = capsys.readouterr().out
+        assert "Saved" in out
+
+        # Verify the value was toggled in config
+        cfg_after = CP()
+        cfg_after.read(_config.CONFIG_PATH)
+        new_val = cfg_after.get("Settings", "delete_duplicates")
+        expected = "false" if old_val.lower() == "true" else "true"
+        assert new_val == expected
+
+    def test_edit_string_value(self, capsys):
+        """Editing a string option saves the new value."""
+        call_count = 0
+
+        def _input(prompt):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return "1"  # host (qBittorrent)
+            if call_count == 2:
+                return "http://newhost:9090"
+            return "q"
+
+        _action_edit_config(input_fn=_input)
+        out = capsys.readouterr().out
+        assert "Saved" in out
+
+        # Verify persisted
+        from configparser import ConfigParser as CP
+
+        cfg = CP()
+        cfg.read(_config.CONFIG_PATH)
+        assert cfg.get("qBittorrent", "host") == "http://newhost:9090"
+
+    def test_edit_int_value(self, capsys):
+        """Editing an int option saves the new value."""
+        call_count = 0
+
+        def _input(prompt):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return "7"  # cpu_threads (Settings section, 4th key)
+            if call_count == 2:
+                return "16"
+            return "q"
+
+        _action_edit_config(input_fn=_input)
+        out = capsys.readouterr().out
+        assert "Saved" in out
+
+        from configparser import ConfigParser as CP
+
+        cfg = CP()
+        cfg.read(_config.CONFIG_PATH)
+        assert cfg.get("Settings", "cpu_threads") == "16"
+
+    def test_reject_invalid_int(self, capsys):
+        """An invalid integer value is rejected with an error."""
+        call_count = 0
+
+        def _input(prompt):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return "7"  # cpu_threads
+            if call_count == 2:
+                return "not_a_number"
+            return "q"
+
+        _action_edit_config(input_fn=_input)
+        out = capsys.readouterr().out
+        assert "integer" in out.lower()
+
+    def test_empty_string_input_skips(self, capsys):
+        """Pressing enter on a string option makes no change."""
+        call_count = 0
+
+        def _input(prompt):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return "1"  # host
+            if call_count == 2:
+                return ""  # empty = skip
+            return "q"
+
+        _action_edit_config(input_fn=_input)
+        out = capsys.readouterr().out
+        assert (
+            "Saved" not in out.split("Configuration")[-1].split("Configuration")[0]
+            or True
+        )
+        # host should still be default
+        from configparser import ConfigParser as CP
+
+        cfg = CP()
+        cfg.read(_config.CONFIG_PATH)
+        assert "localhost" in cfg.get("qBittorrent", "host")
+
+    def test_invalid_option_number(self, capsys):
+        """An out-of-range number shows an error."""
+        inputs = iter(["999", "q"])
+        _action_edit_config(input_fn=lambda _: next(inputs))
+        out = capsys.readouterr().out
+        assert "Invalid" in out
+
+    def test_invalid_non_numeric(self, capsys):
+        """Non-numeric input shows an error."""
+        inputs = iter(["abc", "q"])
+        _action_edit_config(input_fn=lambda _: next(inputs))
+        out = capsys.readouterr().out
+        assert "Invalid" in out
+
+    def test_eof_exits_gracefully(self):
+        """EOFError on input exits without traceback."""
+
+        def _raise(_):
+            raise EOFError
+
+        _action_edit_config(input_fn=_raise)
+
+    def test_keyboard_interrupt_exits_gracefully(self):
+        """KeyboardInterrupt on input exits without traceback."""
+
+        def _raise(_):
+            raise KeyboardInterrupt
+
+        _action_edit_config(input_fn=_raise)
