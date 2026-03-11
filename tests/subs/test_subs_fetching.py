@@ -75,7 +75,7 @@ class TestDownloadSubtitles:
                 result = _download_subtitles("/v.mkv", ["zzz_bad"])
         assert isinstance(result, list)
 
-    @patch("plex_organizer.subs.fetching.os_path.isfile", return_value=True)
+    @patch("plex_organizer.subs.fetching.isfile", return_value=True)
     @patch("plex_organizer.subs.fetching.save_subtitles")
     @patch("plex_organizer.subs.fetching.download_best_subtitles")
     @patch("plex_organizer.subs.fetching.scan_video")

@@ -3,7 +3,6 @@
 from os import utime
 from subprocess import CompletedProcess
 from unittest.mock import patch
-
 from pytest import approx, mark
 
 from plex_organizer.ffmpeg_utils import (
@@ -19,6 +18,7 @@ from plex_organizer.ffmpeg_utils import (
     probe_streams_json,
     probe_subtitle_languages,
     probe_subtitle_stream_count,
+    probe_video_quality,
     replace_and_restore_timestamps,
     run_cmd,
 )
@@ -318,8 +318,72 @@ class TestCleanupPaths:
         """Silently ignores OSError during removal."""
         f = tmp_path / "b.txt"
         f.write_text("data")
-        with patch("plex_organizer.ffmpeg_utils.os_remove", side_effect=OSError):
+        with patch("plex_organizer.ffmpeg_utils.remove", side_effect=OSError):
             cleanup_paths([str(f)])
+
+
+class TestProbeVideoQuality:
+    """Tests for probe_video_quality."""
+
+    @patch("plex_organizer.ffmpeg_utils.probe_streams_json")
+    def test_returns_2160p_for_4k(self, mock_streams):
+        """Returns 2160p for UHD resolution."""
+        mock_streams.return_value = [{"height": 2160}]
+        assert probe_video_quality("/v.mkv") == "2160p"
+
+    @patch("plex_organizer.ffmpeg_utils.probe_streams_json")
+    def test_returns_1080p(self, mock_streams):
+        """Returns 1080p for Full HD resolution."""
+        mock_streams.return_value = [{"height": 1080}]
+        assert probe_video_quality("/v.mkv") == "1080p"
+
+    @patch("plex_organizer.ffmpeg_utils.probe_streams_json")
+    def test_returns_720p(self, mock_streams):
+        """Returns 720p for HD resolution."""
+        mock_streams.return_value = [{"height": 720}]
+        assert probe_video_quality("/v.mkv") == "720p"
+
+    @patch("plex_organizer.ffmpeg_utils.probe_streams_json")
+    def test_returns_480p(self, mock_streams):
+        """Returns 480p for SD resolution."""
+        mock_streams.return_value = [{"height": 480}]
+        assert probe_video_quality("/v.mkv") == "480p"
+
+    @patch("plex_organizer.ffmpeg_utils.probe_streams_json")
+    def test_returns_1440p(self, mock_streams):
+        """Returns 1440p for QHD resolution."""
+        mock_streams.return_value = [{"height": 1440}]
+        assert probe_video_quality("/v.mkv") == "1440p"
+
+    @patch("plex_organizer.ffmpeg_utils.probe_streams_json")
+    def test_returns_raw_height_for_low_res(self, mock_streams):
+        """Returns raw height with p suffix for resolutions below 480p."""
+        mock_streams.return_value = [{"height": 360}]
+        assert probe_video_quality("/v.mkv") == "360p"
+
+    @patch("plex_organizer.ffmpeg_utils.probe_streams_json")
+    def test_returns_none_on_no_streams(self, mock_streams):
+        """Returns None when no video streams found."""
+        mock_streams.return_value = []
+        assert probe_video_quality("/v.mkv") is None
+
+    @patch("plex_organizer.ffmpeg_utils.probe_streams_json")
+    def test_returns_none_when_height_missing(self, mock_streams):
+        """Returns None when height key is absent."""
+        mock_streams.return_value = [{"width": 1920}]
+        assert probe_video_quality("/v.mkv") is None
+
+    @patch("plex_organizer.ffmpeg_utils.probe_streams_json")
+    def test_returns_none_when_height_not_int(self, mock_streams):
+        """Returns None when height is not an integer."""
+        mock_streams.return_value = [{"height": "1080"}]
+        assert probe_video_quality("/v.mkv") is None
+
+    @patch("plex_organizer.ffmpeg_utils.probe_streams_json")
+    def test_returns_none_when_height_zero(self, mock_streams):
+        """Returns None when height is zero."""
+        mock_streams.return_value = [{"height": 0}]
+        assert probe_video_quality("/v.mkv") is None
 
 
 class TestReplaceAndRestoreTimestamps:  # pylint: disable=too-few-public-methods

@@ -15,9 +15,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from json import JSONDecodeError, dump, load
-from os import makedirs, replace, walk
+from os import makedirs, remove, replace, walk
 from os.path import basename, dirname, exists, normpath, relpath, join, splitext
-from re import sub as re_sub
+from re import sub
 from tempfile import NamedTemporaryFile
 from typing import Any, Dict
 
@@ -108,17 +108,12 @@ def mark_indexed(index_root: str, file_path: str) -> None:
     _write_index(idx_path, payload)
 
 
-def _is_valid_tv_layout(index_root: str, file_path: str) -> bool:
-    """Return True if *file_path* matches the expected TV layout under *index_root*.
-
-    Expected structure: ``index_root/<Show>/Season <N>/<Show> SxxEyy[.ext]``.
-    *index_root* is the TV library root (e.g. ``tv/``).
-    """
+def _valid_tv_directory_structure(index_root: str, file_path: str) -> bool:
+    """Return True if the directory hierarchy matches tv/<Show>/Season X/<file>."""
     tv_root = find_corrected_directory(index_root)
     if normpath(tv_root) != normpath(index_root):
         return False
 
-    # File must be exactly three levels deep: tv / Show / Season X / file
     season_dir = dirname(file_path)
     show_dir = dirname(season_dir)
     parent_of_show = dirname(show_dir)
@@ -126,9 +121,20 @@ def _is_valid_tv_layout(index_root: str, file_path: str) -> bool:
     if normpath(parent_of_show) != normpath(index_root):
         return False
 
-    # Verify the show root resolves correctly
-    if normpath(find_corrected_directory(season_dir)) != normpath(show_dir):
+    return normpath(find_corrected_directory(season_dir)) == normpath(show_dir)
+
+
+def _is_valid_tv_layout(index_root: str, file_path: str) -> bool:
+    """Return True if *file_path* matches the expected TV layout under *index_root*.
+
+    Expected structure: ``index_root/<Show>/Season <N>/<Show> SxxEyy[.ext]``.
+    *index_root* is the TV library root (e.g. ``tv/``).
+    """
+    if not _valid_tv_directory_structure(index_root, file_path):
         return False
+
+    season_dir = dirname(file_path)
+    show_dir = dirname(season_dir)
 
     season_name = basename(season_dir)
     season_match = TV_CORRECT_SEASON_RE.match(season_name)
@@ -160,7 +166,7 @@ def _is_valid_movie_layout(index_root: str, file_path: str) -> bool:
         return False
 
     movie_dir = basename(dirname(file_path))
-    expected_folder = re_sub(r" \d{3,4}p$", "", splitext(file_name)[0])
+    expected_folder = sub(r" \d{3,4}p$", "", splitext(file_name)[0])
     if movie_dir != expected_folder:
         return False
 
@@ -192,11 +198,7 @@ def should_index_video(index_root: str, file_path: str) -> bool:
     return _is_valid_movie_layout(index_root, file_path)
 
 
-def _index_root_for_video_path(directory: str, video_path: str) -> str:
-    return _index_root_for_path(directory, dirname(video_path))
-
-
-def _index_root_for_path(directory: str, root: str) -> str:
+def _index_root_for_video_path(directory: str, _video_path: str) -> str:
     return find_corrected_directory(directory)
 
 
@@ -256,12 +258,37 @@ def prune_index(index_root: str) -> int:
     return len(stale_keys)
 
 
-def index_root_for_path(directory: str, root: str) -> str:
+def index_root_for_path(directory: str, _root: str) -> str:
     """Return the correct index root for a file in *root*.
 
     Both TV and movies use the library root (*directory*) as the index root.
     """
     return find_corrected_directory(directory)
+
+
+def _merge_show_index(
+    dirpath: str, root_idx_path: str, root_files: Dict[str, Any]
+) -> bool:
+    """Merge a single per-show index into *root_files*. Return True on success."""
+    show_idx_path = join(dirpath, INDEX_FILENAME)
+    if normpath(show_idx_path) == normpath(root_idx_path):
+        return False
+
+    show_payload = _read_index(show_idx_path)
+    show_files: Dict[str, Any] = show_payload.get("files", {})
+
+    for old_key, value in show_files.items():
+        show_dir = basename(normpath(dirpath))
+        new_key = normpath(join(show_dir, old_key))
+        if new_key not in root_files:
+            root_files[new_key] = value
+
+    try:
+        remove(show_idx_path)
+    except OSError:
+        log_error(f"Failed to remove old index: {show_idx_path}")
+
+    return True
 
 
 def migrate_show_indexes_to_tv_root(tv_root: str) -> int:
@@ -277,8 +304,6 @@ def migrate_show_indexes_to_tv_root(tv_root: str) -> int:
     Returns:
         The number of old per-show index files that were migrated and removed.
     """
-    from os import remove
-
     tv_root = normpath(tv_root)
     root_idx_path = _index_file_path(tv_root)
     root_payload = _read_index(root_idx_path)
@@ -288,25 +313,8 @@ def migrate_show_indexes_to_tv_root(tv_root: str) -> int:
     for dirpath, _dirnames, filenames in walk(tv_root):
         if INDEX_FILENAME not in filenames:
             continue
-        show_idx_path = join(dirpath, INDEX_FILENAME)
-        if normpath(show_idx_path) == normpath(root_idx_path):
-            continue
-
-        show_payload = _read_index(show_idx_path)
-        show_files: Dict[str, Any] = show_payload.get("files", {})
-
-        for old_key, value in show_files.items():
-            show_dir = basename(normpath(dirpath))
-            new_key = normpath(join(show_dir, old_key))
-            if new_key not in root_files:
-                root_files[new_key] = value
-
-        try:
-            remove(show_idx_path)
-        except OSError:
-            log_error(f"Failed to remove old index: {show_idx_path}")
-
-        migrated += 1
+        if _merge_show_index(dirpath, root_idx_path, root_files):
+            migrated += 1
 
     if migrated:
         _write_index(root_idx_path, {"files": root_files})

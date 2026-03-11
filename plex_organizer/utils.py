@@ -4,6 +4,7 @@ from os import sep, listdir, remove
 from os.path import join, exists, isdir
 from shutil import move
 from typing import List
+
 from .log import log_error, log_duplicate
 from .config import get_delete_duplicates, get_include_quality, get_capitalize
 

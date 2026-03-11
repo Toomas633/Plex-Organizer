@@ -13,13 +13,14 @@
   - Delete empty folders
   - (Optional) remove a completed torrent via qBittorrent
 - Media-specific logic lives in `plex_organizer/tv.py` and `plex_organizer/movie.py`:
-  - TV rename format: `Show Name SxxExx Quality.ext` (quality included only when `[Settings] include_quality = true`), then move into `tv/<Show>/Season <x>/`.
-  - Movie rename format: `Name (Year) Quality.ext` (quality included only when `[Settings] include_quality = true`), then move into `movies/<Name (Year)>/`. The subfolder never includes quality.
+  - TV rename format: `Show Name SxxExx Quality.ext` (quality included only when `[Settings] include_quality = true`; when the filename lacks a quality tag, the video stream height is probed via `ffmpeg_utils.probe_video_quality()` as a fallback), then move into `tv/<Show>/Season <x>/`.
+  - Movie rename format: `Name (Year) Quality.ext` (quality included only when `[Settings] include_quality = true`; when the filename lacks a quality tag, the video stream height is probed via `ffmpeg_utils.probe_video_quality()` as a fallback), then move into `movies/<Name (Year)>/`. The subfolder never includes quality.
 - File/dir filtering and shared behaviors:
   - Constants in `plex_organizer/const.py` (`VIDEO_EXTENSIONS`, `EXT_FILTER`, `UNWANTED_FOLDERS`, subtitle extension lists, ISO 639 mappings).
   - Helpers in `plex_organizer/utils.py` (duplicate handling, capitalization rules, "Plex Versions" detection, start-dir mode detection).
   - Logging in `plex_organizer/log.py` (errors + duplicates) controlled by `config.ini`.
-  - FFmpeg/FFprobe wrappers in `plex_organizer/ffmpeg_utils.py` (shared probing and remuxing helpers; binaries provided by `static-ffmpeg`).
+  - FFmpeg/FFprobe wrappers in `plex_organizer/ffmpeg_utils.py` (shared probing and remuxing helpers; binaries provided by `static-ffmpeg`). Includes `probe_video_quality()` which probes the first video stream height and maps it to a standard label (`2160p`, `1440p`, `1080p`, `720p`, `480p`).
+  - Shared pipeline steps in `plex_organizer/pipeline.py` (cleanup, move/rename dispatch, audio tagging, indexing helpers).
   - Subtitle embedding in `plex_organizer/subs/embedding.py` (enabled by config).
   - Subtitle fetching in `plex_organizer/subs/fetching.py` (controlled by `fetch_subtitles` config).
   - Subtitle syncing in `plex_organizer/subs/syncing.py` (controlled by `sync_subtitles` config).
@@ -32,14 +33,17 @@
 plex_organizer/
 ├── __init__.py
 ├── __main__.py          # CLI entrypoint (plex-organizer / python -m plex_organizer)
-├── _paths.py            # data-directory resolution (config, logs, lock file)
+├── paths.py             # data-directory resolution (config, logs, lock file)
 ├── config.py            # config.ini access & auto-management
 ├── const.py             # shared constants (extensions, folders, ISO mappings)
 ├── dataclass.py         # shared data classes
 ├── ffmpeg_utils.py      # ffprobe/ffmpeg wrapper helpers
 ├── indexing.py          # per-library .plex_organizer.index files
 ├── log.py               # logging facade
+├── manage.py            # interactive management menu, index generation, kill (--manage)
 ├── movie.py             # movie rename/move logic
+├── organizer.py         # main orchestrator (lock, walk, dispatch pipeline steps)
+├── pipeline.py          # shared pipeline steps (cleanup, move/rename, audio tagging)
 ├── qb.py                # qBittorrent Web API integration
 ├── tv.py                # TV show rename/move logic
 ├── utils.py             # shared utility functions
@@ -47,11 +51,6 @@ plex_organizer/
 │   ├── __init__.py
 │   ├── tagging.py       # audio stream language tagging
 │   └── whisper.py       # faster-whisper language detection
-├── cli/
-│   ├── __init__.py
-│   ├── generate_indexes.py  # plex-organizer-index CLI
-│   ├── kill.py              # plex-organizer-kill CLI
-│   └── setup.py             # plex-organizer-setup interactive menu
 └── subs/
     ├── __init__.py
     ├── embedding.py     # external subtitle embedding + metadata
@@ -74,8 +73,10 @@ tests/
 ├── test_indexing.py         # indexing.py tests
 ├── test_log.py              # log.py tests
 ├── test_main.py             # __main__.py tests
+├── test_manage.py           # manage.py tests
 ├── test_movie.py            # movie.py tests
-├── test_paths.py            # _paths.py tests
+├── test_organizer.py        # organizer.py tests
+├── test_paths.py            # paths.py tests
 ├── test_qb.py               # qb.py tests
 ├── test_tv.py               # tv.py tests
 ├── test_utils.py            # utils.py tests
@@ -83,11 +84,6 @@ tests/
 │   ├── __init__.py
 │   ├── test_audio_tagging.py    # audio/tagging.py tests
 │   └── test_audio_whisper.py    # audio/whisper.py tests
-├── cli/
-│   ├── __init__.py
-│   ├── test_cli_generate_indexes.py  # cli/generate_indexes.py tests
-│   ├── test_cli_kill.py             # cli/kill.py tests
-│   └── test_cli_setup.py            # cli/setup.py tests
 └── subs/
     ├── __init__.py
     ├── test_subs_embedding.py       # subs/embedding.py helper tests
@@ -112,7 +108,7 @@ tests/
 - Indexing is best-effort and stored as JSON in `.plex_organizer.index`.
 - Index root rules (see `indexing.py`):
   - Movies: index is stored in the movies root.
-  - TV: index is stored in the TV root (`tv/`).
+  - TV: index is stored in the TV root (`tv/`). Per-show indexes from older versions are auto-migrated to the TV root on startup.
 - Only videos that are already in the organizer's final layout are marked as indexed (prevents skipping raw/unprocessed names).
 
 ## How the organizer decides what to process
@@ -180,12 +176,13 @@ tests/
 
 ## Developer workflows
 
-- Install in editable mode: `pip install -e ".[dev]"`.
+- Install in editable mode (dev): `pip install -e ".[dev]"`.
+- Install for production (as root): `sudo pipx install git+https://github.com/Toomas633/Plex-Organizer.git`.
 - Run: `sudo plex-organizer <start_dir> [torrent_hash]` or `sudo python -m plex_organizer <start_dir> [torrent_hash]`.
-- Index generation: `plex-organizer-index <media_root>`.
-- Interactive setup: `plex-organizer-setup` (menu-driven post-install helper: view data dir, view logs, migrate old config, generate indexes, kill running instances, custom pipeline run).
+- Index generation: via `plex-organizer --manage` → option 4.
+- Interactive management menu: `plex-organizer --manage` (menu-driven post-install helper: view data dir, view logs, migrate old config, generate indexes, kill running instances, custom pipeline run, migrate TV indexes, edit configuration).
 - The project is packaged via `pyproject.toml` — dependencies are declared there (not in `requirements.txt`).
-- `update.sh` pulls the latest code and reinstalls the package.
+- Update: `sudo pipx upgrade plex-organizer`.
 - Data directory: defaults to `/root/.config/plex-organizer/` (config, logs, lock file). Override with `PLEX_ORGANIZER_DIR` env var.
 
 ### Testing
@@ -219,9 +216,9 @@ Detailed, topic-specific rules live in `.github/copilot-rules/` and are auto-act
 | `cleanup-safety.md`   | `plex_organizer/**`                               | Aggressive cleanup; `is_plex_folder()` guard; unrecognised dirs → exit without modifying                              |
 | `ffmpeg-usage.md`     | `plex_organizer/**`                               | Use `get_ffmpeg()`/`get_ffprobe()` from `ffmpeg_utils.py`; remux to temp then replace; log failures                   |
 | `indexing.md`         | `plex_organizer/indexing.py`, `plex_organizer/**` | Index only final-layout names; movies root vs show root; `.plex_organizer.index` protected from cleanup               |
+| `release-notes.md`    | `release/**`                                      | Version numbering (major/minor); gather changes from git log; bold-label bullet style; sub-sections for major releases |
 
 ## Tooling
 
 - Formatting: Black is the configured formatter (see `.vscode/settings.json`).
-- Linting in CI: `pylint` runs on push (see `.github/workflows/pylint.yml`, report is informational).
-- Testing: `pytest` + `pytest-cov` (see `.github/workflows/pylint.yml` and `pyproject.toml`). Tests are discovered recursively from `tests/`.
+- CI: `pylint` + `pytest` + `pytest-cov` + SonarCloud run on push (see `.github/workflows/sonarcloud.yml`). Pylint report is informational; tests are discovered recursively from `tests/`.

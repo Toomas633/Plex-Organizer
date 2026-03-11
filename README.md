@@ -31,7 +31,8 @@ Plex Organizer is a Python-based utility designed to help manage and organize me
 - **Subtitle embedding (optional)**: If enabled, embeds external subtitles into the video file and tags subtitle language/type metadata (uses bundled `ffmpeg`/`ffprobe` + `langdetect`).
 - **Subtitle fetching (optional)**: If enabled, searches free online subtitle providers (OpenSubtitles, Podnapisi, Gestdown, TVsubtitles) for missing subtitles in configured languages and embeds them into videos that lack those subtitle streams.
 - **Subtitle syncing (optional)**: If enabled, synchronizes embedded subtitle timing to the audio track using `ffsubsync`. Only text-based subtitle streams are synced; bitmap formats (PGS, VobSub) are left unchanged.
-- **Config file:** Ini file for common configuration options that can be set, disabled or enabled (_beware, some settings might not do anything if already run and info removed from file names, for example turning off quality inclusion and then enabling it_)
+- **Quality detection fallback**: When `include_quality` is enabled but no quality tag (e.g. `1080p`) is found in the filename, the organizer probes the actual video stream height via `ffprobe` and maps it to the nearest standard label (`2160p`, `1440p`, `1080p`, `720p`, `480p`).
+- **Config file:** Ini file for common configuration options that can be set, disabled or enabled
 
 Notes:
 
@@ -122,25 +123,33 @@ The location can be overridden with the `PLEX_ORGANIZER_DIR` environment variabl
 
 ## Installation
 
-Install directly from GitHub with [pipx](https://pipx.pypa.io/) (recommended) — no need to clone the repo:
+Install directly from GitHub with [pipx](https://pipx.pypa.io/) (recommended) — no need to clone the repo.
+
+Since the organizer requires root privileges, install as root so the command is available on root's PATH:
 
 ```bash
-pipx install git+https://github.com/Toomas633/Plex-Organizer.git
+sudo pipx install git+https://github.com/Toomas633/Plex-Organizer.git
+sudo pipx ensurepath
 ```
 
-This gives you three commands on your PATH:
+This gives you the `plex-organizer` command on root's PATH.
 
-| Command                | Purpose                                                               |
-| ---------------------- | --------------------------------------------------------------------- |
-| `plex-organizer`       | Main organizer pipeline                                               |
-| `plex-organizer-index` | Generate index files for an already-organized library                 |
-| `plex-organizer-kill`  | Kill running instances and release the lock file                      |
-| `plex-organizer-setup` | Interactive post-install helper (logs, config migration, custom runs) |
+Run the main pipeline:
+
+```bash
+sudo plex-organizer <start_dir> [torrent_hash]
+```
+
+Launch the interactive management menu (logs, config migration, custom runs):
+
+```bash
+plex-organizer --manage
+```
 
 ## Update
 
 ```bash
-pipx upgrade plex-organizer
+sudo pipx upgrade plex-organizer
 ```
 
 ## Configuration
@@ -160,7 +169,7 @@ Key sections:
   - `password`: Password to authenticate with
 - `[Settings]`
   - `delete_duplicates`: If `true`, deletes source files when the destination already exists.
-  - `include_quality`: If `true`, appends quality like `1080p` to renamed files.
+  - `include_quality`: If `true`, appends quality like `1080p` to renamed files. When the filename lacks a quality tag, the organizer probes the video stream height via `ffprobe` as a fallback.
   - `capitalize`: If `true`, title-cases show/movie names.
   - `cpu_threads`: Limits CPU parallelism for some processing steps.
 - `[Logging]`

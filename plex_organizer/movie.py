@@ -6,13 +6,13 @@ and logging errors or duplicates.
 
 from os import makedirs
 from os.path import join, splitext, exists
-from re import match as re_match, sub as re_sub
+from re import findall as re_findall, match as re_match, sub
 from .log import log_error
-from .const import MOVIE_CORRECT_NAME_RE
+from .ffmpeg_utils import probe_video_quality
 from .utils import move_file, create_name, capitalize, find_corrected_directory
 
 
-def _create_name(file: str) -> str:
+def _create_name(file: str, root: str) -> str:
     """
     Creates a standardized movie file name based on its current name.
 
@@ -21,33 +21,29 @@ def _create_name(file: str) -> str:
 
     Args:
         file (str): The movie filename.
+        root (str): The current directory containing *file*, used for probing
+            video quality from the file when the filename lacks a quality tag.
 
     Returns:
         str: The standardized file name (or the original name if no rename is possible).
     """
-    if MOVIE_CORRECT_NAME_RE.match(file):
-        return file
-
-    match = re_match(r"^(.*?)(?:[.\s])?((?:\d{4}[.\s])+)(?:.*?(\d{3,4}p))?.*", file)
+    match = re_match(
+        r"^(.*?)(?:[.\s])?((?:\(?\d{4}\)?[.\s)]+)+)(?:.*?(\d{3,4}p))?.*", file
+    )
 
     if not match:
         log_error(f"Filename does not match expected pattern: {file}. Skipping rename.")
         return file
 
+    years = re_findall(r"\d{4}", match.group(2))
+
     if not match.group(1):
-        name = match.group(2)
-        year = file.split(".")[1]
+        name = " ".join(years[:-1]) if len(years) >= 2 else years[0]
+        year = years[-1]
     else:
-        name = (
-            match.group(1).replace(".", " ").replace("(", "").strip()
-            if match.group(1)
-            else None
-        )
-        years = match.group(2).split(".") if match.group(2) else []
-        year = None
-        if len(years) > 1:
-            year = years[0]
-        if len(years) > 2:
+        name = match.group(1).replace(".", " ").replace("(", "").strip()
+        year = years[0] if years else None
+        if len(years) >= 2:
             year = years[1]
             name = f"{name} {years[0]}"
 
@@ -56,10 +52,15 @@ def _create_name(file: str) -> str:
     if year:
         name_parts.append(f"({year})")
 
+    quality = match.group(3) if match.group(3) else None
+
+    if not quality and root:
+        quality = probe_video_quality(join(root, file))
+
     return create_name(
         name_parts,
         splitext(file)[1],
-        match.group(3) if match.group(3) else None,
+        quality,
     )
 
 
@@ -78,8 +79,8 @@ def move(directory: str, root: str, file: str) -> str:
     Returns:
         None
     """
-    new_name = _create_name(file)
-    movie_folder = re_sub(r" \d{3,4}p$", "", splitext(new_name)[0])
+    new_name = _create_name(file, root)
+    movie_folder = sub(r" \d{3,4}p$", "", splitext(new_name)[0])
     movies_root = find_corrected_directory(directory)
     movie_dir = join(movies_root, movie_folder)
 

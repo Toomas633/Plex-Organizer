@@ -11,7 +11,7 @@ Version 6.0 changed how Plex Organizer is installed and updated. The old method 
 | **Install**         | `git clone` + `run.sh`          | `pipx install git+https://github.com/Toomas633/Plex-Organizer.git`   |
 | **Update**          | `./update.sh`                   | `pipx upgrade plex-organizer`                                        |
 | **Run**             | `sudo bash run.sh <dir> [hash]` | `sudo plex-organizer <dir> [hash]`                                   |
-| **Kill**            | —                               | `sudo plex-organizer-kill`                                           |
+| **Kill**            | —                               | `sudo plex-organizer --manage` → option 5                            |
 | **Config location** | Repo directory                  | `/root/.config/plex-organizer/` (override with `PLEX_ORGANIZER_DIR`) |
 
 ### Migration steps
@@ -20,13 +20,13 @@ Version 6.0 changed how Plex Organizer is installed and updated. The old method 
 
    ```bash
    sudo apt install pipx
-   pipx ensurepath
+   sudo pipx ensurepath
    ```
 
-2. **Install Plex Organizer**:
+2. **Install Plex Organizer** (as root, so the command is on root's PATH):
 
    ```bash
-   pipx install git+https://github.com/Toomas633/Plex-Organizer.git
+   sudo pipx install git+https://github.com/Toomas633/Plex-Organizer.git
    ```
 
 3. **Move your config** from the old repo directory to the new default location:
@@ -57,7 +57,7 @@ Yes — `sudo` is still required to run the organizer.
 Starting with the latest version, Plex Organizer stores a single `.plex_organizer.index` file in the TV library root (`tv/`) instead of one per show (`tv/<Show>/`). If you are upgrading from a version that used per-show indexes, run the migration tool to merge them:
 
 ```bash
-plex-organizer-setup
+plex-organizer --manage
 # Select option 7: "Migrate TV indexes to root"
 # Enter your TV root folder (e.g. /media/tv)
 ```

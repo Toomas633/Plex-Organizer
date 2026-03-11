@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "plex-organizer"
-version = "1.0.0"
+version = "6.0.0"
 description = "Automated media file renaming, organization and metadata tagging for Plex."
 readme = "README.md"
 license = {text = "GPL-3.0-only"}
@@ -29,9 +29,6 @@ dev = [
 
 [project.scripts]
 plex-organizer = "plex_organizer.__main__:main"
-plex-organizer-index = "plex_organizer.cli.generate_indexes:main"
-plex-organizer-kill = "plex_organizer.cli.kill:main"
-plex-organizer-setup = "plex_organizer.cli.setup:main"
 
 [tool.setuptools.packages.find]
 include = ["plex_organizer*"]
@@ -40,4 +37,13 @@ include = ["plex_organizer*"]
 testpaths = ["tests"]
 filterwarnings = [
     "ignore:.*doesn't match a supported version:Warning",
+]
+
+[tool.pylint.main]
+max-args = 10
+max-positional-arguments = 10
+
+[tool.pylint."messages control"]
+disable = [
+    "too-many-lines",
 ]

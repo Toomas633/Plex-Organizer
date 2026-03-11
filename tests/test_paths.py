@@ -3,7 +3,7 @@
 from os.path import isdir
 from unittest.mock import patch
 
-from plex_organizer._paths import data_dir
+from plex_organizer.paths import data_dir
 
 
 class TestDataDir:
@@ -46,7 +46,7 @@ class TestDataDir:
         parent = tmp_path / "parent"
         parent.mkdir()
         (parent / "config.ini").write_text("[Settings]\n")
-        with patch("plex_organizer._paths._PACKAGE_PARENT", str(parent)):
+        with patch("plex_organizer.paths._PACKAGE_PARENT", str(parent)):
             result = data_dir()
         assert result == str(parent)
         data_dir.cache_clear()
@@ -59,9 +59,9 @@ class TestDataDir:
         noconf = tmp_path / "noconf"
         noconf.mkdir()
         with (
-            patch("plex_organizer._paths._PACKAGE_PARENT", str(noconf)),
-            patch("plex_organizer._paths.os.makedirs") as mock_makedirs,
-            patch("plex_organizer._paths.os.path.isfile", return_value=False),
+            patch("plex_organizer.paths._PACKAGE_PARENT", str(noconf)),
+            patch("plex_organizer.paths.makedirs") as mock_makedirs,
+            patch("plex_organizer.paths.isfile", return_value=False),
         ):
             result = data_dir()
         assert result == "/root/.config/plex-organizer"

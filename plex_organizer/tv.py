@@ -7,6 +7,8 @@ and logging errors or duplicates.
 from os import makedirs, sep
 from os.path import join, splitext, exists
 from re import compile as re_compile, IGNORECASE
+
+from .ffmpeg_utils import probe_video_quality
 from .utils import move_file, create_name, capitalize, find_corrected_directory
 
 
@@ -38,11 +40,15 @@ def _create_name(root: str, file: str) -> str:
         season_episode = None
 
     quality_match = quality_pattern.search(file)
+    quality = quality_match.group(1) if quality_match else None
+
+    if not quality:
+        quality = probe_video_quality(join(root, file))
 
     return create_name(
         [show_name, season_episode],
         splitext(file)[1],
-        quality_match.group(1) if quality_match else None,
+        quality,
     )
 
 

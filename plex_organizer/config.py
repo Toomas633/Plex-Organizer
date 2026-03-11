@@ -5,7 +5,7 @@ This module provides functions to access settings from the config.ini file.
 from os.path import join, exists
 from configparser import ConfigParser
 
-from ._paths import data_dir
+from .paths import data_dir
 
 CONFIG_PATH = join(data_dir(), "config.ini")
 

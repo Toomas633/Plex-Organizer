@@ -261,6 +261,33 @@ def cleanup_paths(paths: Sequence[str]) -> None:
             pass
 
 
+def probe_video_quality(video_path: str) -> str | None:
+    """Probe the video stream height and return a quality string like ``1080p``.
+
+    Uses ffprobe to read the first video stream's height, then maps it to
+    the nearest standard resolution label.  Returns ``None`` when the probe
+    fails or the height cannot be determined.
+    """
+    streams = probe_streams_json(video_path, "v")
+    if not streams:
+        return None
+    height = streams[0].get("height")
+    if not isinstance(height, int) or height <= 0:
+        return None
+
+    thresholds = [
+        (2000, "2160p"),
+        (1400, "1440p"),
+        (900, "1080p"),
+        (600, "720p"),
+        (400, "480p"),
+    ]
+    for min_height, label in thresholds:
+        if height >= min_height:
+            return label
+    return f"{height}p"
+
+
 def replace_and_restore_timestamps(
     tmp_path: str,
     video_path: str,

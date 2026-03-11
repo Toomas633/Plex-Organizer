@@ -14,7 +14,7 @@ from .config import (
     get_logging_level,
     get_timestamped_log_files,
 )
-from ._paths import data_dir
+from .paths import data_dir
 
 SCRIPT_DIR = data_dir()
 

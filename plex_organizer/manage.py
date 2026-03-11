@@ -1,6 +1,6 @@
-"""Interactive post-install setup for Plex Organizer.
+"""Interactive management menu for Plex Organizer.
 
-Installed as the ``plex-organizer-setup`` console script.  Presents a
+Launched via ``plex-organizer --manage``.  Presents a
 numbered menu with ``q`` to quit:
 
 1. Show organizer folder (data dir with config, logs, lock file)
@@ -10,26 +10,44 @@ numbered menu with ``q`` to quit:
 5. Kill running organizers
 6. Custom run (pick individual pipeline steps)
 7. Migrate old per-show TV indexes to TV root
+8. Edit configuration
 """
+
+from __future__ import annotations
 
 from collections.abc import Callable
 from configparser import ConfigParser
 from contextlib import ExitStack
+from datetime import datetime
 from glob import glob
-from os import environ, unlink, walk as _walk
+from json import JSONDecodeError, load
+from os import (
+    environ,
+    getpid,
+    kill,
+    remove,
+    unlink,
+    walk,
+)
 from os.path import (
     abspath,
+    basename,
+    dirname,
+    exists,
     expanduser,
     getmtime,
     getsize,
     isdir,
     isfile,
     join,
+    normpath,
+    relpath,
 )
 from re import compile as re_compile
+from signal import SIGKILL
 from subprocess import (
-    DEVNULL,
     CalledProcessError,
+    DEVNULL,
     TimeoutExpired,
     call,
     check_output,
@@ -37,32 +55,33 @@ from subprocess import (
 )
 from sys import exit as sys_exit, modules as _modules
 from tempfile import NamedTemporaryFile
+from typing import Dict, Set
 from unittest.mock import patch
 
-from .. import config as _config
-from .._paths import data_dir
-from ..audio.tagging import tag_audio_track_languages
-from ..const import VIDEO_EXTENSIONS
-from ..indexing import (
+from . import config as _config
+from .paths import data_dir
+from .audio.tagging import tag_audio_track_languages
+from .config import ensure_config_exists
+from .const import INDEX_FILENAME, VIDEO_EXTENSIONS
+from .dataclass import IndexSummary
+from .indexing import (
     index_root_for_path,
     mark_indexed,
     migrate_show_indexes_to_tv_root,
     prune_index,
     should_index_video,
 )
-from ..subs.embedding import merge_subtitles_in_directory
-from ..subs.fetching import fetch_subtitles_in_directory
-from ..subs.syncing import sync_subtitles_in_directory
-from ..utils import is_main_folder, is_plex_folder, is_script_temp_file
-from ..__main__ import (
-    _analyze_video_languages,
-    _delete_empty_directories,
-    _delete_unwanted_files,
-    _get_video_files_to_process,
-    _move_directories,
+from .subs.embedding import merge_subtitles_in_directory
+from .subs.fetching import fetch_subtitles_in_directory
+from .subs.syncing import sync_subtitles_in_directory
+from .pipeline import (
+    analyze_video_languages,
+    delete_empty_directories,
+    delete_unwanted_files,
+    get_video_files_to_process,
+    move_directories,
 )
-from .generate_indexes import generate_indexes
-from .kill import run as _kill_run
+from .utils import is_main_folder, is_plex_folder, is_script_temp_file
 
 __all__ = [
     "_expand_folder",
@@ -75,6 +94,275 @@ __all__ = [
     "_run_rename_move",
     "_run_delete_empty",
 ]
+
+LOCK_FILENAME = ".plex_organizer.lock"
+
+
+def _find_pids() -> list[int]:
+    """Return PIDs of running plex-organizer processes (excluding ourselves)."""
+    own_pid = getpid()
+    try:
+        output = check_output(
+            ["pgrep", "-f", "plex.organizer"],
+            text=True,
+            stderr=DEVNULL,
+        )
+    except (CalledProcessError, FileNotFoundError):
+        return []
+
+    pids: list[int] = []
+    for line in output.strip().splitlines():
+        try:
+            pid = int(line)
+        except ValueError:
+            continue
+        if pid == own_pid:
+            continue
+        pids.append(pid)
+    return pids
+
+
+def _process_cmdline(pid: int) -> str:
+    """Return the command line of *pid* for display purposes."""
+    try:
+        output = check_output(
+            ["ps", "-p", str(pid), "-o", "args="],
+            text=True,
+            stderr=DEVNULL,
+        )
+        return output.strip()
+    except (CalledProcessError, FileNotFoundError):
+        return "unknown"
+
+
+def kill_run() -> None:
+    """Kill running plex-organizer processes and remove the lock file."""
+    killed = 0
+
+    for pid in _find_pids():
+        cmdline = _process_cmdline(pid)
+        try:
+            kill(pid, SIGKILL)
+            print(f"Killed process {pid} ({cmdline})")
+            killed += 1
+        except ProcessLookupError:
+            pass
+        except PermissionError:
+            print(f"Permission denied killing process {pid} ({cmdline})")
+
+    lock_path = join(data_dir(), LOCK_FILENAME)
+    if exists(lock_path):
+        try:
+            remove(lock_path)
+            print(f"Removed lock file: {lock_path}")
+        except OSError as exc:
+            print(f"Failed to remove lock file: {exc}")
+    else:
+        print(f"No lock file found at {lock_path}")
+
+    if killed == 0:
+        print("No running plex-organizer processes found.")
+    else:
+        print(f"Killed {killed} process(es).")
+
+
+def _rel_key(index_root: str, file_path: str) -> str:
+    """Return the index key for *file_path* relative to *index_root*."""
+    rel = relpath(file_path, index_root)
+    return normpath(rel)
+
+
+def _read_index_keys(index_root: str) -> Set[str]:
+    """Read existing index keys for *index_root*.
+
+    Returns an empty set when the index does not exist or cannot be read.
+    """
+    idx_path = join(index_root, INDEX_FILENAME)
+    try:
+        with open(idx_path, "r", encoding="utf-8") as f:
+            payload = load(f)
+    except FileNotFoundError:
+        return set()
+    except (OSError, JSONDecodeError):
+        return set()
+
+    if not isinstance(payload, dict):
+        return set()
+
+    files = payload.get("files")
+    if isinstance(files, dict):
+        return set(files.keys())
+
+    return set()
+
+
+def _directories_to_scan(start_dir: str) -> list[str]:
+    """Resolve *start_dir* into one or more directories to scan.
+
+    Raises:
+        ValueError: when *start_dir* does not match any accepted shape.
+    """
+    tv_dir = join(start_dir, "tv")
+    movies_dir = join(start_dir, "movies")
+
+    if isdir(tv_dir) and isdir(movies_dir):
+        return [tv_dir, movies_dir]
+
+    base = basename(normpath(start_dir)).lower()
+    if base == "tv":
+        return [start_dir]
+    if base == "movies":
+        return [start_dir]
+
+    parent = basename(dirname(normpath(start_dir))).lower()
+    if parent == "tv":
+        return [start_dir]
+
+    raise ValueError(
+        "Invalid root. Provide either a folder containing BOTH"
+        " 'tv' and 'movies', or the 'tv' folder,"
+        " or a 'tv/<Show>' folder, or the 'movies' folder."
+    )
+
+
+def _add_summary(a: IndexSummary, b: IndexSummary) -> IndexSummary:
+    """Add two summaries together."""
+    return IndexSummary(
+        total_videos=a.total_videos + b.total_videos,
+        eligible_videos=a.eligible_videos + b.eligible_videos,
+        newly_indexed=a.newly_indexed + b.newly_indexed,
+    )
+
+
+def _is_video_candidate(file_name: str) -> bool:
+    """Return True if *file_name* is a video file we should consider."""
+    if is_script_temp_file(file_name):
+        return False
+    return file_name.lower().endswith(VIDEO_EXTENSIONS)
+
+
+def _safe_should_index_video(index_root: str, video_path: str) -> bool:
+    """Best-effort wrapper for ``should_index_video``."""
+    try:
+        return should_index_video(index_root, video_path)
+    except OSError:
+        return False
+
+
+def _safe_mark_indexed(index_root: str, video_path: str) -> bool:
+    """Best-effort wrapper for ``mark_indexed``."""
+    try:
+        mark_indexed(index_root, video_path)
+        return True
+    except OSError:
+        return False
+
+
+def _get_or_load_index_keys(cache: Dict[str, Set[str]], index_root: str) -> Set[str]:
+    """Return cached index keys for *index_root*, reading from disk if needed."""
+    keys = cache.get(index_root)
+    if keys is None:
+        keys = _read_index_keys(index_root)
+        cache[index_root] = keys
+    return keys
+
+
+def _scan_and_index_root(
+    directory: str,
+    root: str,
+    files: list[str],
+    cache: Dict[str, Set[str]],
+) -> IndexSummary:
+    """Scan a single filesystem *root* and update index files as needed."""
+    total_videos = 0
+    eligible_videos = 0
+    newly_indexed = 0
+
+    if is_plex_folder(root):
+        return IndexSummary(0, 0, 0)
+
+    index_root = index_root_for_path(directory, root)
+    index_keys = _get_or_load_index_keys(cache, index_root)
+
+    for file_name in files:
+        if not _is_video_candidate(file_name):
+            continue
+
+        total_videos += 1
+        video_path = join(root, file_name)
+        if not _safe_should_index_video(index_root, video_path):
+            continue
+
+        eligible_videos += 1
+        key = _rel_key(index_root, video_path)
+        if key in index_keys:
+            continue
+
+        if not _safe_mark_indexed(index_root, video_path):
+            continue
+
+        index_keys.add(key)
+        newly_indexed += 1
+
+    return IndexSummary(
+        total_videos=total_videos,
+        eligible_videos=eligible_videos,
+        newly_indexed=newly_indexed,
+    )
+
+
+def _scan_and_index_directory(
+    directory: str, cache: Dict[str, Set[str]]
+) -> IndexSummary:
+    """Walk *directory* recursively and update index files (best-effort)."""
+    summary = IndexSummary(0, 0, 0)
+    for root, _, files in walk(directory):
+        summary = _add_summary(
+            summary, _scan_and_index_root(directory, root, files, cache)
+        )
+    return summary
+
+
+def generate_indexes(start_dir: str) -> IndexSummary:
+    """Generate/backfill organizer index files under *start_dir*.
+
+    Only indexes videos already in the organizer's final layout.
+    """
+    start_dir = abspath(start_dir)
+    if not isdir(start_dir):
+        raise ValueError(f"Not a directory: {start_dir}")
+
+    ensure_config_exists()
+
+    dirs = _directories_to_scan(start_dir)
+    cache: Dict[str, Set[str]] = {}
+
+    total_videos = 0
+    eligible_videos = 0
+    newly_indexed = 0
+    for directory in dirs:
+        summary = _scan_and_index_directory(directory, cache)
+        total_videos += summary.total_videos
+        eligible_videos += summary.eligible_videos
+        newly_indexed += summary.newly_indexed
+
+    print(
+        "\n".join(
+            [
+                f"Scanned: {start_dir}",
+                f"Run at: {datetime.now().isoformat(timespec='seconds')}",
+                f"Videos found: {total_videos}",
+                f"Eligible (correct place/name): {eligible_videos}",
+                f"Newly indexed: {newly_indexed}",
+            ]
+        )
+    )
+
+    return IndexSummary(
+        total_videos=total_videos,
+        eligible_videos=eligible_videos,
+        newly_indexed=newly_indexed,
+    )
 
 
 def _config_path() -> str:
@@ -390,7 +678,7 @@ def _action_generate_indexes(input_fn=input) -> None:
 def _action_kill_organizers(**_kwargs) -> None:
     """Kill all running plex-organizer processes."""
     print()
-    _kill_run()
+    kill_run()
     print()
 
 
@@ -443,6 +731,27 @@ def _expand_folder(folder: str) -> list[str]:
     return [folder]
 
 
+def _index_root_videos(index_root: str, root: str, files: list[str]) -> None:
+    """Mark un-indexed video files in a single *root* directory."""
+    for f in files:
+        if not _is_video_candidate(f):
+            continue
+        video_path = join(root, f)
+        if should_index_video(index_root, video_path):
+            mark_indexed(index_root, video_path)
+
+
+def _index_directory_videos(directory: str) -> None:
+    """Walk *directory* and mark un-indexed video files, then prune stale entries."""
+    index_root = index_root_for_path(directory, directory)
+    prune_index(index_root)
+
+    for root, _, files in walk(directory):
+        if is_plex_folder(root):
+            continue
+        _index_root_videos(index_root, root, files)
+
+
 def _update_index_after_custom_run(folder: str) -> None:
     """Walk *folder* and mark any un-indexed video files as indexed.
 
@@ -450,26 +759,13 @@ def _update_index_after_custom_run(folder: str) -> None:
     after a rename/move operation).
     """
     for directory in _expand_folder(folder):
-        index_root = index_root_for_path(directory, directory)
-        prune_index(index_root)
-
-        for root, _, files in _walk(directory):
-            if is_plex_folder(root):
-                continue
-            for f in files:
-                if is_script_temp_file(f):
-                    continue
-                if not f.lower().endswith(VIDEO_EXTENSIONS):
-                    continue
-                video_path = join(root, f)
-                if should_index_video(index_root, video_path):
-                    mark_indexed(index_root, video_path)
+        _index_directory_videos(directory)
 
 
 def _find_all_videos(folder: str) -> list[str]:
     """Return paths for every video file under *folder*, ignoring the index."""
     videos: list[str] = []
-    for root, _, files in _walk(folder):
+    for root, _, files in walk(folder):
         if is_plex_folder(root):
             continue
         for f in files:
@@ -560,7 +856,7 @@ def _pipeline_patches(settings: dict):
         ("plex_organizer.subs.fetching.get_fetch_subtitles", settings["fetch_langs"]),
         ("plex_organizer.subs.syncing.get_sync_subtitles", settings["do_sync"]),
         ("plex_organizer.config.get_enable_audio_tagging", settings["do_tag"]),
-        ("plex_organizer.__main__.get_enable_audio_tagging", settings["do_tag"]),
+        ("plex_organizer.pipeline.get_enable_audio_tagging", settings["do_tag"]),
         ("plex_organizer.audio.tagging.get_cpu_threads", settings["cpu"]),
         ("plex_organizer.utils.get_include_quality", settings["inc_quality"]),
         ("plex_organizer.utils.get_capitalize", settings["do_capitalize"]),
@@ -584,13 +880,13 @@ def _run_full_pipeline(folder: str, input_fn=input) -> None:
             fetch_subtitles_in_directory(directory, video_paths=all_videos)
             sync_subtitles_in_directory(directory, video_paths=all_videos)
 
-            for root, _, files in _walk(directory, topdown=False):
-                videos = _get_video_files_to_process(root, files, no_index)
-                _analyze_video_languages(root, videos)
-                _delete_unwanted_files(root, files)
-                _move_directories(directory, root, videos)
+            for root, _, files in walk(directory, topdown=False):
+                videos = get_video_files_to_process(root, files, no_index)
+                analyze_video_languages(root, videos)
+                delete_unwanted_files(root, files)
+                move_directories(directory, root, videos)
 
-            _delete_empty_directories(directory)
+            delete_empty_directories(directory)
 
     _update_index_after_custom_run(folder)
 
@@ -668,8 +964,8 @@ def _run_tag_audio(folder: str, input_fn=input) -> None:
 
 def _run_cleanup(folder: str, **_kwargs) -> None:
     for directory in _expand_folder(folder):
-        for root, _, files in _walk(directory, topdown=False):
-            _delete_unwanted_files(root, files)
+        for root, _, files in walk(directory, topdown=False):
+            delete_unwanted_files(root, files)
 
     _update_index_after_custom_run(folder)
 
@@ -697,21 +993,21 @@ def _run_rename_move(folder: str, input_fn=input) -> None:
                 return_value=del_dups,
             ),
         ):
-            for root, _, files in _walk(directory, topdown=False):
+            for root, _, files in walk(directory, topdown=False):
                 videos = [
                     f
                     for f in files
                     if f.lower().endswith(VIDEO_EXTENSIONS)
                     and not no_index.get(join(root, f), False)
                 ]
-                _move_directories(directory, root, videos)
+                move_directories(directory, root, videos)
 
     _update_index_after_custom_run(folder)
 
 
 def _run_delete_empty(folder: str, **_kwargs) -> None:
     for directory in _expand_folder(folder):
-        _delete_empty_directories(directory)
+        delete_empty_directories(directory)
 
     _update_index_after_custom_run(folder)
 
@@ -881,6 +1177,23 @@ def _validate_config_value(type_hint: str, value: str) -> str | None:
     return None
 
 
+def _prompt_new_config_value(
+    input_fn, key: str, current: str, type_hint: str
+) -> str | None:
+    """Prompt for a new config value. Return *None* to skip the edit."""
+    if type_hint == "bool":
+        new_value = "false" if current.lower() == "true" else "true"
+        print(f"\n    {key}: {_DIM}{current}{_RESET} → {_CYAN}{new_value}{_RESET}")
+        return new_value
+
+    try:
+        new_value = input_fn(f"    New value for {key} [{current}]: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return None
+    return new_value or None
+
+
 def _action_edit_config(input_fn=input) -> None:
     """Interactive config editor.
 
@@ -920,18 +1233,9 @@ def _action_edit_config(input_fn=input) -> None:
         current = config.get(section, key)
         type_hint = _CONFIG_KEY_TYPES.get((section, key), "str")
 
-        if type_hint == "bool":
-            # Toggle boolean values directly
-            new_value = "false" if current.lower() == "true" else "true"
-            print(f"\n    {key}: {_DIM}{current}{_RESET} → {_CYAN}{new_value}{_RESET}")
-        else:
-            try:
-                new_value = input_fn(f"    New value for {key} [{current}]: ").strip()
-            except (EOFError, KeyboardInterrupt):
-                print()
-                continue
-            if not new_value:
-                continue
+        new_value = _prompt_new_config_value(input_fn, key, current, type_hint)
+        if new_value is None:
+            continue
 
         error = _validate_config_value(type_hint, new_value)
         if error:
@@ -994,7 +1298,7 @@ def _run_menu(*, input_fn=input) -> None:
 
 
 def main() -> None:
-    """Entry-point for the ``plex-organizer-setup`` console script."""
+    """Entry-point for ``plex-organizer --manage``."""
     _config.ensure_config_exists()
     _run_menu()
     sys_exit(0)

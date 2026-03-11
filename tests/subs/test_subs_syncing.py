@@ -2,7 +2,6 @@
 
 from os import path as os_path
 from unittest.mock import MagicMock, patch
-
 from pytest import mark
 
 from plex_organizer.subs.syncing import (

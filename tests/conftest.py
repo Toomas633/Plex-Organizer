@@ -1,17 +1,16 @@
 """Shared fixtures for Plex Organizer tests."""
 
-import warnings
-
-from os.path import join as os_join
+from warnings import filterwarnings
+from os.path import join
 from pytest import fixture
 
-from plex_organizer._paths import data_dir
+from plex_organizer.paths import data_dir
 from plex_organizer.config import ensure_config_exists
 
 
 def pytest_configure():
     """Suppress third-party version mismatch warning fired at import time."""
-    warnings.filterwarnings(
+    filterwarnings(
         "ignore", message=".*doesn't match a supported version", category=Warning
     )
 
@@ -48,7 +47,7 @@ def config_dir(tmp_path, monkeypatch):
 
     data_dir.cache_clear()
 
-    config_ini_path = os_join(str(config_path), "config.ini")
+    config_ini_path = join(str(config_path), "config.ini")
     monkeypatch.setattr("plex_organizer.config.CONFIG_PATH", config_ini_path)
     monkeypatch.setattr("plex_organizer.log.SCRIPT_DIR", str(config_path))
 

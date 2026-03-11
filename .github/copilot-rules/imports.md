@@ -24,7 +24,7 @@ Within each group, sort alphabetically by module name.
 
 - Import the public API being tested at the top of the file:
   ```python
-  from plex_organizer.cli.setup import main, _run_menu, MENU_OPTIONS
+  from plex_organizer.manage import main, _run_menu, MENU_OPTIONS
   ```
 - Import test helpers (`pytest.mark`, `pytest.raises`, `unittest.mock.patch`) in the standard-library group.
 - Use `from unittest.mock import patch` (not `from unittest import mock`) when you only need `patch`.

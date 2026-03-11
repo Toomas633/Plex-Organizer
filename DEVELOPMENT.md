@@ -66,14 +66,9 @@ python3 -m venv venv && source venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-This installs the package in editable mode with three CLI commands on PATH:
+This installs the package in editable mode with the `plex-organizer` command on PATH.
 
-| Command                | Purpose                                                               |
-| ---------------------- | --------------------------------------------------------------------- |
-| `plex-organizer`       | Main organizer pipeline                                               |
-| `plex-organizer-index` | Generate index files for an already-organized library                 |
-| `plex-organizer-kill`  | Kill running instances and release the lock file                      |
-| `plex-organizer-setup` | Interactive post-install helper (logs, config migration, custom runs) |
+The interactive management menu is available via `plex-organizer --manage`.
 
 ## Project Structure
 
@@ -81,14 +76,16 @@ This installs the package in editable mode with three CLI commands on PATH:
 plex_organizer/
 ├── __init__.py
 ├── __main__.py          # CLI entrypoint (plex-organizer / python -m plex_organizer)
-├── _paths.py            # data-directory resolution (config, logs, lock file)
+├── paths.py             # data-directory resolution (config, logs, lock file)
 ├── config.py            # config.ini access & auto-management
 ├── const.py             # shared constants (extensions, folders, ISO mappings)
 ├── dataclass.py         # shared data classes
 ├── ffmpeg_utils.py      # ffprobe/ffmpeg wrapper helpers (uses static-ffmpeg)
 ├── indexing.py          # per-library .plex_organizer.index files
 ├── log.py               # logging facade
+├── manage.py            # interactive management menu, index generation, kill (--manage)
 ├── movie.py             # movie rename/move logic
+├── pipeline.py          # shared pipeline steps (cleanup, move/rename, audio tagging)
 ├── qb.py                # qBittorrent Web API integration
 ├── tv.py                # TV show rename/move logic
 ├── utils.py             # shared utility functions
@@ -96,11 +93,6 @@ plex_organizer/
 │   ├── __init__.py
 │   ├── tagging.py       # audio stream language tagging
 │   └── whisper.py       # faster-whisper language detection
-├── cli/
-│   ├── __init__.py
-│   ├── generate_indexes.py  # plex-organizer-index CLI
-│   ├── kill.py              # plex-organizer-kill CLI
-│   └── setup.py             # plex-organizer-setup interactive menu
 └── subs/
     ├── __init__.py
     ├── embedding.py     # external subtitle embedding + metadata
@@ -123,8 +115,9 @@ tests/
 ├── test_indexing.py         # indexing.py tests
 ├── test_log.py              # log.py tests
 ├── test_main.py             # __main__.py tests
+├── test_manage.py           # manage.py tests
 ├── test_movie.py            # movie.py tests
-├── test_paths.py            # _paths.py tests
+├── test_paths.py            # paths.py tests
 ├── test_qb.py               # qb.py tests
 ├── test_tv.py               # tv.py tests
 ├── test_utils.py            # utils.py tests
@@ -132,11 +125,6 @@ tests/
 │   ├── __init__.py
 │   ├── test_audio_tagging.py    # audio/tagging.py tests
 │   └── test_audio_whisper.py    # audio/whisper.py tests
-├── cli/
-│   ├── __init__.py
-│   ├── test_cli_generate_indexes.py  # cli/generate_indexes.py tests
-│   ├── test_cli_kill.py             # cli/kill.py tests
-│   └── test_cli_setup.py            # cli/setup.py tests
 └── subs/
     ├── __init__.py
     ├── test_subs_embedding.py       # subs/embedding.py helper tests
@@ -156,7 +144,7 @@ Shared fixtures (`tmp_media_tree`, `config_dir`, `default_config`, etc.) live in
 3. **Subtitle syncing** — synchronize embedded subtitle timing to the audio track.
 4. **Audio language tagging** — detect and write missing audio language metadata.
 5. **Cleanup** — delete unwanted files and folders (aggressive; see below).
-6. **Rename & move** — place videos into the final TV/Movie layout + index them.
+6. **Rename & move** — place videos into the final TV/Movie layout + index them. When `include_quality` is enabled and the filename lacks a quality tag, the video stream height is probed via `ffprobe` and mapped to the nearest standard label (`2160p`/`1440p`/`1080p`/`720p`/`480p`).
 7. **Delete empty folders**.
 
 Torrent removal (if a hash was provided) happens before the pipeline. If the start directory is not a recognised media folder, the organizer removes the torrent and exits immediately without modifying any files.
@@ -216,13 +204,13 @@ Place sample media structures under `testData/`. The directory is bind-mounted i
 
 ## Tooling
 
-| Tool           | Usage                        | Config                         |
-| -------------- | ---------------------------- | ------------------------------ |
-| **Black**      | Auto-formatter, runs on save | `.vscode/settings.json`        |
-| **pylint**     | Linting (CI + local)         | `.github/workflows/pylint.yml` |
-| **pytest**     | Unit / integration tests     | `pyproject.toml`               |
-| **pytest-cov** | Coverage reporting           | `pyproject.toml`               |
-| **SonarCloud** | Quality gate badge           | `sonar-project.properties`     |
+| Tool           | Usage                        | Config                             |
+| -------------- | ---------------------------- | ---------------------------------- |
+| **Black**      | Auto-formatter, runs on save | `.vscode/settings.json`            |
+| **pylint**     | Linting (CI + local)         | `.github/workflows/sonarcloud.yml` |
+| **pytest**     | Unit / integration tests     | `pyproject.toml`                   |
+| **pytest-cov** | Coverage reporting           | `pyproject.toml`                   |
+| **SonarCloud** | Quality gate badge           | `sonar-project.properties`         |
 
 ### Formatting with Black
 
@@ -253,7 +241,7 @@ pylint --fail-under=8.0 plex_organizer/
 
 - **Moves & renames**: always use `utils.move_file()` so duplicate handling and `delete_duplicates` stay consistent.
 - **Plex safety**: never modify paths where `utils.is_plex_folder()` returns `True`.
-- **Filename parsing**: keep regex-driven and conservative (see `tv.py` and `movie.py` patterns).
+- **Filename parsing**: keep regex-driven and conservative (see `tv.py` and `movie.py` patterns). Both TV and movie renaming support a quality fallback: when the filename lacks a quality tag and `include_quality` is enabled, `ffmpeg_utils.probe_video_quality()` probes the actual video stream to determine resolution.
 - **Config keys**: don't add new keys to `config.ini` without updating the `default_config` dict in `config.py` — unknown options are removed on startup.
 - **Error handling**: log errors rather than raising. Processing should continue for other files.
 - **ffmpeg binaries**: always use `get_ffmpeg()` / `get_ffprobe()` from `ffmpeg_utils.py` — never shell out to bare `ffmpeg` / `ffprobe`.
@@ -275,7 +263,7 @@ When adding a new config option:
 
 By default, `config.ini`, log files, and the lock file are stored in `/root/.config/plex-organizer/`.
 
-Resolution order (see `_paths.py`):
+Resolution order (see `paths.py`):
 
 1. `PLEX_ORGANIZER_DIR` environment variable (if set).
 2. Current working directory — if it already contains `config.ini`.

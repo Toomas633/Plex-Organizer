@@ -1,8 +1,7 @@
 """Tests for plex_organizer.utils."""
 
-import os
+from os.path import basename, join
 from unittest.mock import patch
-
 from pytest import mark
 
 from plex_organizer.utils import (
@@ -44,7 +43,7 @@ class TestFindFolders:
         (tmp_path / "sub2").mkdir()
         (tmp_path / "file.txt").write_text("x")
         result = find_folders(str(tmp_path))
-        names = sorted(os.path.basename(p) for p in result)
+        names = sorted(basename(p) for p in result)
         assert names == ["sub1", "sub2"]
 
     def test_returns_empty_for_nonexistent(self, tmp_path):
@@ -289,9 +288,9 @@ class TestFindCorrectedDirectory:
     def test_relative_movies(self):
         """Relative movie path is truncated correctly."""
         result = find_corrected_directory("data/movies/Film")
-        assert result == os.path.join("data", "movies")
+        assert result == join("data", "movies")
 
     def test_relative_tv(self):
         """Relative TV path is truncated correctly."""
         result = find_corrected_directory("data/tv/Show/Season 1")
-        assert result == os.path.join("data", "tv", "Show")
+        assert result == join("data", "tv", "Show")

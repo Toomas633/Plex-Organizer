@@ -33,7 +33,7 @@ class TestTagEmbeddedSubtitleLanguages:
         _tag_embedded_subtitle_languages(str(vid))
 
     @patch("plex_organizer.subs.embedding.remove")
-    @patch("plex_organizer.subs.embedding.os_path.exists", return_value=False)
+    @patch("plex_organizer.subs.embedding.exists", return_value=False)
     @patch("plex_organizer.subs.embedding.replace_and_restore_timestamps")
     @patch("plex_organizer.subs.embedding.run_cmd")
     @patch(
@@ -75,7 +75,7 @@ class TestTagEmbeddedSubtitleLanguages:
         _rep.assert_called_once()
 
     @patch("plex_organizer.subs.embedding.remove")
-    @patch("plex_organizer.subs.embedding.os_path.exists", return_value=False)
+    @patch("plex_organizer.subs.embedding.exists", return_value=False)
     @patch("plex_organizer.subs.embedding.log_error")
     @patch("plex_organizer.subs.embedding.run_cmd")
     @patch(
@@ -117,7 +117,7 @@ class TestTagEmbeddedSubtitleLanguages:
         mock_log.assert_called()
 
     @patch("plex_organizer.subs.embedding.remove", side_effect=OSError("busy"))
-    @patch("plex_organizer.subs.embedding.os_path.exists", return_value=True)
+    @patch("plex_organizer.subs.embedding.exists", return_value=True)
     @patch("plex_organizer.subs.embedding.replace_and_restore_timestamps")
     @patch("plex_organizer.subs.embedding.run_cmd")
     @patch(
@@ -326,7 +326,7 @@ class TestEmbedSubtitles:
         mock_log.assert_called_once()
 
     @patch("plex_organizer.subs.embedding.remove")
-    @patch("plex_organizer.subs.embedding.os_path.exists", return_value=False)
+    @patch("plex_organizer.subs.embedding.exists", return_value=False)
     @patch("plex_organizer.subs.embedding._delete_paths_best_effort")
     @patch("plex_organizer.subs.embedding.replace_and_restore_timestamps")
     @patch("plex_organizer.subs.embedding.run_cmd")
@@ -355,7 +355,7 @@ class TestEmbedSubtitles:
         _del.assert_called_once()
 
     @patch("plex_organizer.subs.embedding.remove")
-    @patch("plex_organizer.subs.embedding.os_path.exists", return_value=False)
+    @patch("plex_organizer.subs.embedding.exists", return_value=False)
     @patch("plex_organizer.subs.embedding.log_error")
     @patch("plex_organizer.subs.embedding.run_cmd")
     @patch(
@@ -393,7 +393,7 @@ class TestEmbedSubtitles:
         _embed_subtitles(plan)
 
     @patch("plex_organizer.subs.embedding.remove")
-    @patch("plex_organizer.subs.embedding.os_path.exists", return_value=True)
+    @patch("plex_organizer.subs.embedding.exists", return_value=True)
     @patch("plex_organizer.subs.embedding.log_error")
     @patch(
         "plex_organizer.subs.embedding._build_subtitle_embed_cmd",
@@ -418,7 +418,7 @@ class TestEmbedSubtitles:
         mock_log.assert_called()
 
     @patch("plex_organizer.subs.embedding.remove", side_effect=OSError("locked"))
-    @patch("plex_organizer.subs.embedding.os_path.exists", return_value=True)
+    @patch("plex_organizer.subs.embedding.exists", return_value=True)
     @patch("plex_organizer.subs.embedding.log_error")
     @patch("plex_organizer.subs.embedding.run_cmd")
     @patch(
