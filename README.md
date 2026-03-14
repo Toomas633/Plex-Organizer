@@ -34,6 +34,7 @@ Plex Organizer is a Python-based utility designed to help manage and organize me
 - **Subtitle fetching (optional)**: If enabled, searches free online subtitle providers (OpenSubtitles, Podnapisi, Gestdown, TVsubtitles) for missing subtitles in configured languages and embeds them into videos that lack those subtitle streams.
 - **Subtitle syncing (optional)**: If enabled, synchronizes embedded subtitle timing to the audio track using `ffsubsync`. Only text-based subtitle streams are synced; bitmap formats (PGS, VobSub) are left unchanged.
 - **Quality detection fallback**: When `include_quality` is enabled but no quality tag (e.g. `1080p`) is found in the filename, the organizer probes the actual video stream height via `ffprobe` and maps it to the nearest standard label (`2160p`, `1440p`, `1080p`, `720p`, `480p`).
+- **Sonarr/Radarr integration (optional)**: If enabled, automatically triggers via Custom Script environment variables, skips rename/move (the \*arr app handles naming), deletes downloaded torrent files, and sends targeted library rescan notifications after processing.
 - **Config file:** Ini file for common configuration options that can be set, disabled or enabled
 
 Notes:
@@ -189,7 +190,16 @@ Key sections:
   - `fetch_subtitles`: Comma-separated list of ISO 639-2 language codes to fetch (e.g. `eng` or `eng, est`). Leave empty to disable. Default: `eng`.
   - `subtitle_providers`: Comma-separated list of subtitle providers for fetching (default: `opensubtitles, podnapisi, gestdown, tvsubtitles`).
   - `sync_subtitles`: If `true`, synchronizes embedded subtitle timing to the audio track after all other subtitle operations. Default: `true`.
-    **NB!!** Make sure the qBittorrent `host` is correct. Torrent removal is best-effort: failures are logged and processing continues.
+- `[Sonarr]`
+  - `enabled`: If `true`, enables Sonarr integration. Default: `false`.
+  - `host`: Base URL for Sonarr's API (default `http://localhost:8989`).
+  - `api_key`: Sonarr API key (found in Sonarr → Settings → General).
+- `[Radarr]`
+  - `enabled`: If `true`, enables Radarr integration. Default: `false`.
+  - `host`: Base URL for Radarr's API (default `http://localhost:7878`).
+  - `api_key`: Radarr API key (found in Radarr → Settings → General).
+
+**NB!!** Make sure the qBittorrent `host` is correct. Torrent removal is best-effort: failures are logged and processing continues.
 
 ## Usage
 
@@ -205,6 +215,8 @@ sudo plex-organizer <start_directory>
 ```
 
 ### Automated running
+
+#### Via qBittorrent (standalone)
 
 Add this command to qBittorrent options under "Run external program on torrent finished":
 
@@ -224,6 +236,25 @@ Example:
 ![Example config image](.github/images/image.png)
 
 For performance reasons it is recommended that **%D** is used instead of entire directory like `/mnt/share`. This way only the specific folder will be organized not entire library on each call. Putting your root directory like `/mnt/share` will remove the torrent with the given hash and process the directories `/mnt/media/tv` and `/mnt/media/movies`.
+
+#### Via Sonarr / Radarr (Custom Script)
+
+When Sonarr or Radarr integration is enabled in `config.ini`, you can set up Plex Organizer as a **Custom Script** connection:
+
+1. In Sonarr/Radarr go to **Settings → Connect → + → Custom Script**.
+2. Set **Path** to the `plex-organizer` executable (e.g. `/root/.local/bin/plex-organizer`).
+3. Select **On Download** and/or **On Rename** triggers.
+4. Click **Test** to verify the connection (the organizer will log "test event — OK" and exit cleanly).
+
+When triggered this way, the organizer automatically detects Sonarr/Radarr environment variables (`sonarr_eventtype`, `sonarr_series_path`, `sonarr_download_id`, etc.) — no CLI arguments are needed.
+
+**How it works:**
+
+- Rename/move is skipped for the media type managed by the \*arr app (Sonarr for TV, Radarr for movies) since it already placed files in their final layout.
+- Subtitle embedding, fetching, syncing, audio tagging, and cleanup still run.
+- The completed torrent is removed from qBittorrent with `deleteFiles=true` so downloaded source files are cleaned up.
+- After processing, a targeted library rescan is sent to the \*arr app. If the specific series/movie is not found, a full library rescan is triggered instead.
+- All API calls are best-effort: failures are logged and processing continues.
 
 ## License
 

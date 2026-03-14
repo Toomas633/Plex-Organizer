@@ -23,15 +23,15 @@
 
 Python dependencies are declared in `pyproject.toml`:
 
-| Package          | Purpose                                  |
-| ---------------- | ---------------------------------------- |
-| `requests`       | qBittorrent Web API communication        |
-| `chardet`        | Character encoding detection             |
-| `faster-whisper` | Audio language detection via Whisper     |
-| `langdetect`     | Subtitle language identification         |
-| `subliminal`     | Online subtitle fetching                 |
-| `ffsubsync`      | Subtitle-to-audio timing synchronization |
-| `static-ffmpeg`  | Bundled ffmpeg/ffprobe binaries          |
+| Package          | Purpose                                         |
+| ---------------- | ----------------------------------------------- |
+| `requests`       | qBittorrent / Sonarr / Radarr API communication |
+| `chardet`        | Character encoding detection                    |
+| `faster-whisper` | Audio language detection via Whisper            |
+| `langdetect`     | Subtitle language identification                |
+| `subliminal`     | Online subtitle fetching                        |
+| `ffsubsync`      | Subtitle-to-audio timing synchronization        |
+| `static-ffmpeg`  | Bundled ffmpeg/ffprobe binaries                 |
 
 Dev extras (`pip install -e ".[dev]"`):
 
@@ -87,6 +87,8 @@ plex_organizer/
 ├── movie.py             # movie rename/move logic
 ├── pipeline.py          # shared pipeline steps (cleanup, move/rename, audio tagging)
 ├── qb.py                # qBittorrent Web API integration
+├── radarr.py            # Radarr API integration (rescan notifications)
+├── sonarr.py            # Sonarr API integration (rescan notifications)
 ├── tv.py                # TV show rename/move logic
 ├── utils.py             # shared utility functions
 ├── audio/
@@ -117,8 +119,11 @@ tests/
 ├── test_main.py             # __main__.py tests
 ├── test_manage.py           # manage.py tests
 ├── test_movie.py            # movie.py tests
+├── test_organizer.py        # organizer.py tests
 ├── test_paths.py            # paths.py tests
 ├── test_qb.py               # qb.py tests
+├── test_radarr.py           # radarr.py tests
+├── test_sonarr.py           # sonarr.py tests
 ├── test_tv.py               # tv.py tests
 ├── test_utils.py            # utils.py tests
 ├── audio/
@@ -146,8 +151,11 @@ Shared fixtures (`tmp_media_tree`, `config_dir`, `default_config`, etc.) live in
 5. **Cleanup** — delete unwanted files and folders (aggressive; see below).
 6. **Rename & move** — place videos into the final TV/Movie layout + index them. When `include_quality` is enabled and the filename lacks a quality tag, the video stream height is probed via `ffprobe` and mapped to the nearest standard label (`2160p`/`1440p`/`1080p`/`720p`/`480p`).
 7. **Delete empty folders**.
+8. **Sonarr/Radarr notifications** — send targeted rescan commands when integration is enabled.
 
-Torrent removal (if a hash was provided) happens before the pipeline. If the start directory is not a recognised media folder, the organizer removes the torrent and exits immediately without modifying any files.
+Torrent removal (if a hash was provided) happens before the pipeline. When Sonarr/Radarr integration is enabled, `deleteFiles=true` is passed so downloaded source files are cleaned up. If the start directory is not a recognised media folder, the organizer removes the torrent and exits immediately without modifying any files.
+
+When run as a Sonarr/Radarr Custom Script, environment variables are auto-detected and take priority over CLI arguments. Step 6 (rename & move) is skipped for the media type managed by the \*arr app.
 
 ### Cleanup behavior
 

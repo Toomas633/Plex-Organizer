@@ -12,6 +12,7 @@
   - Per-library indexing so already-processed files can be skipped on future runs
   - Delete empty folders
   - (Optional) remove a completed torrent via qBittorrent
+  - (Optional) Sonarr/Radarr integration: automatic trigger via Custom Script env vars, skip rename/move when enabled, send targeted rescan notifications after processing
 - Media-specific logic lives in `plex_organizer/tv.py` and `plex_organizer/movie.py`:
   - TV rename format: `Show Name SxxExx Quality.ext` (quality included only when `[Settings] include_quality = true`; when the filename lacks a quality tag, the video stream height is probed via `ffmpeg_utils.probe_video_quality()` as a fallback), then move into `tv/<Show>/Season <x>/`.
   - Movie rename format: `Name (Year) Quality.ext` (quality included only when `[Settings] include_quality = true`; when the filename lacks a quality tag, the video stream height is probed via `ffmpeg_utils.probe_video_quality()` as a fallback), then move into `movies/<Name (Year)>/`. The subfolder never includes quality.
@@ -26,6 +27,8 @@
   - Subtitle syncing in `plex_organizer/subs/syncing.py` (controlled by `sync_subtitles` config).
   - Audio language tagging in `plex_organizer/audio/tagging.py` and Whisper inference in `plex_organizer/audio/whisper.py`.
   - Indexing in `plex_organizer/indexing.py` via `.plex_organizer.index` files.
+  - Sonarr API integration in `plex_organizer/sonarr.py` (series lookup, targeted rescan commands).
+  - Radarr API integration in `plex_organizer/radarr.py` (movie lookup, targeted rescan commands).
 
 ### Project structure
 
@@ -45,6 +48,8 @@ plex_organizer/
 ├── organizer.py         # main orchestrator (lock, walk, dispatch pipeline steps)
 ├── pipeline.py          # shared pipeline steps (cleanup, move/rename, audio tagging)
 ├── qb.py                # qBittorrent Web API integration
+├── radarr.py            # Radarr API integration (rescan notifications)
+├── sonarr.py            # Sonarr API integration (rescan notifications)
 ├── tv.py                # TV show rename/move logic
 ├── utils.py             # shared utility functions
 ├── audio/
@@ -78,6 +83,8 @@ tests/
 ├── test_organizer.py        # organizer.py tests
 ├── test_paths.py            # paths.py tests
 ├── test_qb.py               # qb.py tests
+├── test_radarr.py           # radarr.py tests
+├── test_sonarr.py           # sonarr.py tests
 ├── test_tv.py               # tv.py tests
 ├── test_utils.py            # utils.py tests
 ├── audio/
@@ -130,6 +137,22 @@ tests/
   - Host comes from `[qBittorrent] host` (default `http://localhost:8081`).
   - Auth is implemented via `/api/v2/auth/login` using `[qBittorrent] username/password`.
   - Torrent removal is best-effort: failures are logged; processing continues.
+  - When Sonarr/Radarr integration is enabled, `deleteFiles=true` is used so downloaded files are cleaned up after the \*arr app has imported them.
+
+## Sonarr/Radarr integration
+
+- Sonarr: controlled by `[Sonarr]` section (`enabled`, `host`, `api_key`).
+- Radarr: controlled by `[Radarr]` section (`enabled`, `host`, `api_key`).
+- **Trigger mechanism**: when run as a Sonarr/Radarr Custom Script, environment variables (`sonarr_eventtype`/`radarr_eventtype`, `*_series_path`/`*_movie_path`, `*_download_id`) are auto-detected in `__main__.py._detect_arr_env()` and take priority over CLI arguments.
+  - `Test` events log success and exit immediately.
+  - `Download`/`Rename` events extract start_dir and torrent hash from env vars.
+- **Rename/move skip**: when Sonarr (TV) or Radarr (movies) is enabled, `pipeline.move_directories()` skips rename/move for the corresponding media type (the \*arr app already placed files in their final layout). Indexing still runs.
+- **Rescan notifications**: after processing, `organizer._dispatch_arr_notifications()` sends targeted rescan commands via the Sonarr/Radarr v3 API:
+  - Sonarr: `GET /api/v3/series` → find by title → `POST /api/v3/command {"name": "RescanSeries", "seriesId": id}`. Falls back to full library rescan when the series is not found.
+  - Radarr: `GET /api/v3/movie` → find by title → `POST /api/v3/command {"name": "RescanMovie", "movieId": id}`. Falls back to full library rescan when the movie is not found.
+  - Auth: `X-Api-Key` header.
+- **Best-effort**: all API calls log errors and continue; they never raise.
+- **When disabled**: behavior is 100% unchanged from before.
 
 ## Audio language tagging
 

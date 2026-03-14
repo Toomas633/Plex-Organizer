@@ -8,11 +8,13 @@ from pytest import mark, raises
 from plex_organizer.organizer import (
     _get_lock,
     _process_directory,
+    _dispatch_arr_notifications,
     main,
 )
 from plex_organizer.pipeline import (
     analyze_video_languages,
     _delete_unwanted_directories,
+    _is_arr_managed,
     delete_empty_directories,
     delete_unwanted_files,
     get_video_files_to_process,
@@ -398,7 +400,7 @@ class TestMain:
     ):
         """Main processes tv/ and movies/ when start_dir is a main folder."""
         main("/media", "abc123")
-        mock_rm.assert_called_once_with("abc123")
+        mock_rm.assert_called_once_with("abc123", delete_files=False)
         assert mock_proc.call_count == 2
         mock_proc.assert_any_call("/media/tv")
         mock_proc.assert_any_call("/media/movies")
@@ -475,3 +477,137 @@ class TestMain:
         """Processing runs without torrent removal when hash is None."""
         main("/media/tv/Show", None)
         mock_proc.assert_called_once_with("/media/tv/Show")
+
+    @patch("plex_organizer.organizer._dispatch_arr_notifications")
+    @patch("plex_organizer.organizer._process_directory", return_value={"Show A"})
+    @patch("plex_organizer.organizer._get_lock")
+    @patch("plex_organizer.organizer.check_clear_log")
+    @patch("plex_organizer.organizer.ensure_config_exists")
+    @patch("plex_organizer.organizer.is_media_directory", return_value=True)
+    @patch("plex_organizer.organizer.is_main_folder", return_value=True)
+    @patch("plex_organizer.organizer.remove_torrent")
+    @patch("plex_organizer.organizer.get_sonarr_enabled", return_value=True)
+    @patch("plex_organizer.organizer.get_radarr_enabled", return_value=False)
+    @patch("plex_organizer.organizer.log_debug")
+    def test_arr_enabled_deletes_files(
+        self, _log, _re, _se, mock_rm, _mf, _md, _cfg, _clr, _lock, _proc, _notify
+    ):
+        """Torrent removal uses delete_files=True when arr is enabled."""
+        main("/media", "hash1", source="sonarr")
+        mock_rm.assert_called_once_with("hash1", delete_files=True)
+
+    @patch("plex_organizer.organizer._dispatch_arr_notifications")
+    @patch("plex_organizer.organizer._process_directory", return_value={"Film A"})
+    @patch("plex_organizer.organizer._get_lock")
+    @patch("plex_organizer.organizer.check_clear_log")
+    @patch("plex_organizer.organizer.ensure_config_exists")
+    @patch("plex_organizer.organizer.is_media_directory", return_value=True)
+    @patch("plex_organizer.organizer.is_main_folder", return_value=False)
+    @patch("plex_organizer.organizer.log_debug")
+    def test_dispatch_arr_notifications_called(
+        self, _log, _mf, _md, _cfg, _clr, _lock, _proc, mock_notify
+    ):
+        """Arr notifications are dispatched after processing."""
+        main("/media/movies/Film", None)
+        mock_notify.assert_called_once()
+
+
+@mark.usefixtures("default_config")
+class TestDispatchArrNotifications:
+    """Tests for _dispatch_arr_notifications."""
+
+    @patch("plex_organizer.organizer.get_radarr_enabled", return_value=False)
+    @patch("plex_organizer.organizer.get_sonarr_enabled", return_value=True)
+    @patch("plex_organizer.sonarr.notify_series")
+    def test_notifies_sonarr(self, mock_notify, _se, _re):
+        """Calls notify_series when Sonarr is enabled and tv names exist."""
+        _dispatch_arr_notifications({"Show A"}, set())
+        mock_notify.assert_called_once_with({"Show A"})
+
+    @patch("plex_organizer.organizer.get_radarr_enabled", return_value=True)
+    @patch("plex_organizer.organizer.get_sonarr_enabled", return_value=False)
+    @patch("plex_organizer.radarr.notify_movies")
+    def test_notifies_radarr(self, mock_notify, _se, _re):
+        """Calls notify_movies when Radarr is enabled and movie names exist."""
+        _dispatch_arr_notifications(set(), {"Film A"})
+        mock_notify.assert_called_once_with({"Film A"})
+
+    @patch("plex_organizer.organizer.get_radarr_enabled", return_value=False)
+    @patch("plex_organizer.organizer.get_sonarr_enabled", return_value=False)
+    def test_no_notifications_when_disabled(self, _se, _re):
+        """No notifications dispatched when arr is disabled."""
+        # Should not raise
+        _dispatch_arr_notifications({"Show A"}, {"Film A"})
+
+    @patch("plex_organizer.organizer.get_radarr_enabled", return_value=True)
+    @patch("plex_organizer.organizer.get_sonarr_enabled", return_value=True)
+    def test_no_notifications_with_empty_names(self, _se, _re):
+        """No notifications dispatched when name sets are empty."""
+        _dispatch_arr_notifications(set(), set())
+
+
+@mark.usefixtures("default_config")
+class TestIsArrManaged:
+    """Tests for _is_arr_managed helper in pipeline."""
+
+    @patch("plex_organizer.pipeline.get_radarr_enabled", return_value=False)
+    @patch("plex_organizer.pipeline.get_sonarr_enabled", return_value=True)
+    def test_tv_dir_with_sonarr(self, _se, _re):
+        """TV directory is arr-managed when Sonarr is enabled."""
+        assert _is_arr_managed("/media/tv/Show/Season 01") is True
+
+    @patch("plex_organizer.pipeline.get_radarr_enabled", return_value=True)
+    @patch("plex_organizer.pipeline.get_sonarr_enabled", return_value=False)
+    def test_movie_dir_with_radarr(self, _se, _re):
+        """Movie directory is arr-managed when Radarr is enabled."""
+        assert _is_arr_managed("/media/movies/Film") is True
+
+    @patch("plex_organizer.pipeline.get_radarr_enabled", return_value=False)
+    @patch("plex_organizer.pipeline.get_sonarr_enabled", return_value=False)
+    def test_not_managed_when_disabled(self, _se, _re):
+        """Returns False when both arr apps are disabled."""
+        assert _is_arr_managed("/media/tv/Show") is False
+        assert _is_arr_managed("/media/movies/Film") is False
+
+    @patch("plex_organizer.pipeline.get_radarr_enabled", return_value=False)
+    @patch("plex_organizer.pipeline.get_sonarr_enabled", return_value=True)
+    def test_movie_dir_not_managed_by_sonarr(self, _se, _re):
+        """Movie directory is not managed when only Sonarr is enabled."""
+        assert _is_arr_managed("/media/movies/Film") is False
+
+
+@mark.usefixtures("default_config")
+class TestMoveDirectoriesArrManaged:
+    """Tests for move_directories when arr is managing rename/move."""
+
+    @patch("plex_organizer.pipeline.mark_indexed")
+    @patch("plex_organizer.pipeline.should_index_video", return_value=True)
+    @patch("plex_organizer.pipeline.index_root_for_path", return_value="/media/tv")
+    @patch("plex_organizer.pipeline.tv_move")
+    @patch("plex_organizer.pipeline.get_radarr_enabled", return_value=False)
+    @patch("plex_organizer.pipeline.get_sonarr_enabled", return_value=True)
+    def test_skips_rename_but_indexes(
+        self, _se, _re, mock_tv_move, _ir, _si, mock_mark
+    ):
+        """Rename/move is skipped but indexing still runs."""
+        move_directories("/media/tv", "/media/tv/Show/Season 01", ["ep.mkv"])
+        mock_tv_move.assert_not_called()
+        mock_mark.assert_called_once_with(
+            "/media/tv", "/media/tv/Show/Season 01/ep.mkv"
+        )
+
+    @patch("plex_organizer.pipeline.mark_indexed")
+    @patch("plex_organizer.pipeline.should_index_video", return_value=True)
+    @patch("plex_organizer.pipeline.index_root_for_path", return_value="/media/movies")
+    @patch("plex_organizer.pipeline.movie_move")
+    @patch("plex_organizer.pipeline.get_radarr_enabled", return_value=True)
+    @patch("plex_organizer.pipeline.get_sonarr_enabled", return_value=False)
+    def test_skips_movie_rename_but_indexes(
+        self, _se, _re, mock_movie_move, _ir, _si, mock_mark
+    ):
+        """Movie rename/move is skipped when Radarr manages it."""
+        move_directories("/media/movies", "/media/movies/Film", ["film.mkv"])
+        mock_movie_move.assert_not_called()
+        mock_mark.assert_called_once_with(
+            "/media/movies", "/media/movies/Film/film.mkv"
+        )

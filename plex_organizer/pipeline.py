@@ -5,7 +5,7 @@ from os.path import join, normcase
 from shutil import rmtree
 
 from .audio.tagging import tag_audio_track_languages
-from .config import get_enable_audio_tagging
+from .config import get_enable_audio_tagging, get_sonarr_enabled, get_radarr_enabled
 from .const import UNWANTED_FOLDERS, VIDEO_EXTENSIONS, EXT_FILTER
 from .indexing import mark_indexed, should_index_video, index_root_for_path
 from .log import log_error, log_info, log_debug
@@ -89,41 +89,66 @@ def delete_empty_directories(directory: str):
                 rmdir(dir_path)
 
 
+def _is_arr_managed(root: str) -> bool:
+    """Return True when Sonarr/Radarr manages rename/move for this path."""
+    if is_tv_dir(root) and get_sonarr_enabled():
+        return True
+    if not is_tv_dir(root) and get_radarr_enabled():
+        return True
+    return False
+
+
+def _try_mark(idx_root: str, final_path: str) -> None:
+    """Best-effort index marking: swallows OSError."""
+    try:
+        if should_index_video(idx_root, final_path):
+            mark_indexed(idx_root, final_path)
+    except OSError:
+        pass
+
+
 def move_directories(directory: str, root: str, video_files: list[str]):
     """Move/rename video files found in *root*.
 
     Dispatches to the TV or Movie handler based on the current directory path.
+    When Sonarr (TV) or Radarr (movies) integration is enabled, rename/move is
+    skipped because the *arr application already placed files in their final
+    layout. Indexing still runs for files that are already in the correct layout.
 
     Args:
         directory: The base directory being processed (used as the movie destination root).
         root: Current directory being walked.
         video_files: Filenames present in *root*.
     """
-
-    def _move_one(file_name: str) -> str:
-        if is_tv_dir(root):
-            log_info(f"Moving TV file '{file_name}' from '{root}'")
-            return tv_move(root, file_name)
-        log_info(f"Moving movie file '{file_name}' from '{root}'")
-        return movie_move(directory, root, file_name)
-
-    def _try_mark(idx_root: str, final_path: str) -> None:
-        try:
-            if should_index_video(idx_root, final_path):
-                mark_indexed(idx_root, final_path)
-        except OSError:
-            pass
-
     if is_plex_folder(root):
         return
+
+    arr_managed = _is_arr_managed(root)
+    if arr_managed:
+        log_info(
+            f"Rename/move skipped for '{root}' — managed by "
+            f"{'Sonarr' if is_tv_dir(root) else 'Radarr'}"
+        )
 
     idx_root = index_root_for_path(directory, root)
     for file in video_files:
         if is_script_temp_file(file):
             continue
 
-        final_path = _move_one(file)
+        if arr_managed:
+            final_path = join(root, file)
+        else:
+            final_path = _move_file(directory, root, file)
         _try_mark(idx_root, final_path)
+
+
+def _move_file(directory: str, root: str, file_name: str) -> str:
+    """Dispatch a single file to the TV or Movie move handler."""
+    if is_tv_dir(root):
+        log_info(f"Moving TV file '{file_name}' from '{root}'")
+        return tv_move(root, file_name)
+    log_info(f"Moving movie file '{file_name}' from '{root}'")
+    return movie_move(directory, root, file_name)
 
 
 def get_video_files_to_process(

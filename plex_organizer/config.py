@@ -45,6 +45,16 @@ def ensure_config_exists():
             "subtitle_providers": "opensubtitles, podnapisi, gestdown, tvsubtitles",
             "sync_subtitles": "true",
         },
+        "Sonarr": {
+            "enabled": "false",
+            "host": "http://localhost:8989",
+            "api_key": "",
+        },
+        "Radarr": {
+            "enabled": "false",
+            "host": "http://localhost:7878",
+            "api_key": "",
+        },
     }
 
     if exists(CONFIG_PATH):
@@ -233,3 +243,39 @@ def get_subtitle_providers() -> list[str]:
     if not raw:
         raw = default
     return [p.strip().lower() for p in raw.split(",") if p.strip()]
+
+
+def get_sonarr_enabled():
+    """Return True if Sonarr integration is enabled."""
+    config = _get_config()
+    return config.getboolean("Sonarr", "enabled", fallback=False)
+
+
+def get_sonarr_host():
+    """Return the Sonarr host URL from the config file."""
+    config = _get_config()
+    return config.get("Sonarr", "host", fallback="http://localhost:8989")
+
+
+def get_sonarr_api_key():
+    """Return the Sonarr API key from the config file."""
+    config = _get_config()
+    return config.get("Sonarr", "api_key", fallback="")
+
+
+def get_radarr_enabled():
+    """Return True if Radarr integration is enabled."""
+    config = _get_config()
+    return config.getboolean("Radarr", "enabled", fallback=False)
+
+
+def get_radarr_host():
+    """Return the Radarr host URL from the config file."""
+    config = _get_config()
+    return config.get("Radarr", "host", fallback="http://localhost:7878")
+
+
+def get_radarr_api_key():
+    """Return the Radarr API key from the config file."""
+    config = _get_config()
+    return config.get("Radarr", "api_key", fallback="")

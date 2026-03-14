@@ -26,6 +26,19 @@ class TestRemoveTorrent:
         assert delete_call[1]["data"]["hashes"] == "abc123"
         assert delete_call[1]["data"]["deleteFiles"] == "false"
 
+    def test_delete_files_true(self):
+        """When delete_files=True, deleteFiles is sent as 'true'."""
+        mock_session = MagicMock()
+        mock_login_response = MagicMock(status_code=200, text="Ok.")
+        mock_delete_response = MagicMock(status_code=200)
+        mock_session.post.side_effect = [mock_login_response, mock_delete_response]
+
+        with patch("plex_organizer.qb.Session", return_value=mock_session):
+            remove_torrent("abc123", delete_files=True)
+
+        delete_call = mock_session.post.call_args_list[1]
+        assert delete_call[1]["data"]["deleteFiles"] == "true"
+
     def test_auth_failure_logs_error(self):
         """Authentication failure is logged as an error."""
         mock_session = MagicMock()
