@@ -1,6 +1,7 @@
 {
   "python.venvPath": "venv",
   "python.defaultInterpreterPath": "${workspaceFolder}/venv/bin/python",
+  "python.analysis.extraPaths": ["${workspaceFolder}"],
   "python.terminal.activateEnvironment": true,
   "python.terminal.activateEnvInCurrentTerminal": true,
   "editor.formatOnSave": true,

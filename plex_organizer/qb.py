@@ -43,7 +43,7 @@ def _authenticate_session(session: Session) -> bool:
     return True
 
 
-def remove_torrent(torrent_hash: str):
+def remove_torrent(torrent_hash: str, delete_files: bool = False):
     """
     Removes a torrent from qBittorrent using its hash.
 
@@ -52,6 +52,7 @@ def remove_torrent(torrent_hash: str):
 
     Args:
         torrent_hash (str): The hash of the torrent to remove.
+        delete_files (bool): When True, also delete the downloaded files.
 
     Returns:
         None
@@ -65,7 +66,10 @@ def remove_torrent(torrent_hash: str):
 
         response = session.post(
             f"{get_host()}/api/v2/torrents/delete",
-            data={"hashes": torrent_hash, "deleteFiles": "false"},
+            data={
+                "hashes": torrent_hash,
+                "deleteFiles": str(delete_files).lower(),
+            },
             timeout=10,
         )
 

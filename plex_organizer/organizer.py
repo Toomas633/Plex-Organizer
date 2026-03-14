@@ -16,7 +16,7 @@ It can also remove a completed torrent from qBittorrent when a torrent hash is p
 """
 
 from errno import EAGAIN, EWOULDBLOCK
-from os import walk
+from os import walk, sep
 from os.path import join
 from fcntl import flock, LOCK_EX, LOCK_NB
 from time import sleep
@@ -27,8 +27,13 @@ from .utils import (
     is_tv_dir,
     is_main_folder,
     is_media_directory,
+    find_corrected_directory,
 )
-from .config import ensure_config_exists
+from .config import (
+    ensure_config_exists,
+    get_sonarr_enabled,
+    get_radarr_enabled,
+)
 from .paths import data_dir
 from .subs.embedding import merge_subtitles_in_directory
 from .subs.fetching import fetch_subtitles_in_directory
@@ -82,8 +87,12 @@ def _get_lock():
                 raise
 
 
-def _process_directory(directory: str):
-    """Run the full organizer pipeline for a single directory tree."""
+def _process_directory(directory: str) -> set[str]:
+    """Run the full organizer pipeline for a single directory tree.
+
+    Returns:
+        A set of media names (show or movie folder names) found during processing.
+    """
     if is_tv_dir(directory):
         migrated = migrate_show_indexes_to_tv_root(directory)
         if migrated:
@@ -98,20 +107,32 @@ def _process_directory(directory: str):
     fetch_subtitles_in_directory(directory, video_paths=videos_to_process)
     sync_subtitles_in_directory(directory, video_paths=videos_to_process)
 
+    media_names: set[str] = set()
     for root, _, files in walk(directory, topdown=False):
         videos_to_process = get_video_files_to_process(root, files, indexed_videos)
+        if videos_to_process:
+            corrected = find_corrected_directory(root)
+            media_names.add(corrected.split(sep)[-1])
         analyze_video_languages(root, videos_to_process)
         delete_unwanted_files(root, files)
         move_directories(directory, root, videos_to_process)
 
     delete_empty_directories(directory)
+    return media_names
 
 
-def main(start_dir: str, torrent_hash: str | None):
+def main(start_dir: str, torrent_hash: str | None, source: str | None = None):
     """Organizer entrypoint.
 
     Ensures config/logs exist, optionally removes a torrent from
     qBittorrent, then processes either a main folder or a single directory.
+    When triggered by Sonarr or Radarr, notifications are sent after processing
+    and downloaded torrent files are deleted.
+
+    Args:
+        start_dir: Directory to process.
+        torrent_hash: Optional torrent hash to remove from qBittorrent.
+        source: ``"sonarr"``, ``"radarr"``, or ``None`` when triggered manually.
     """
     ensure_config_exists()
     check_clear_log()
@@ -119,10 +140,13 @@ def main(start_dir: str, torrent_hash: str | None):
     log_info(
         f"Starting Plex Organizer with directory: {start_dir} and torrent hash: {torrent_hash}"
     )
+    if source:
+        log_info(f"Triggered by {source}")
 
     try:
+        arr_enabled = get_sonarr_enabled() or get_radarr_enabled()
         if torrent_hash:
-            remove_torrent(torrent_hash)
+            remove_torrent(torrent_hash, delete_files=arr_enabled)
 
         if not is_media_directory(start_dir):
             log_info(
@@ -140,7 +164,29 @@ def main(start_dir: str, torrent_hash: str | None):
         else:
             directories = [start_dir]
         log_info(f"Processing directories: {directories}")
+
+        tv_names: set[str] = set()
+        movie_names: set[str] = set()
         for directory in directories:
-            _process_directory(directory)
+            names = _process_directory(directory)
+            if is_tv_dir(directory):
+                tv_names.update(names)
+            else:
+                movie_names.update(names)
+
+        _dispatch_arr_notifications(tv_names, movie_names)
     except (OSError, ValueError) as e:
         log_error(f"Unhandled entrypoint error occurred: {e}")
+
+
+def _dispatch_arr_notifications(tv_names: set[str], movie_names: set[str]):
+    """Send rescan notifications to Sonarr/Radarr when enabled."""
+    if get_sonarr_enabled() and tv_names:
+        from .sonarr import notify_series  # pylint: disable=import-outside-toplevel
+
+        notify_series(tv_names)
+
+    if get_radarr_enabled() and movie_names:
+        from .radarr import notify_movies  # pylint: disable=import-outside-toplevel
+
+        notify_movies(movie_names)

@@ -19,6 +19,12 @@ from plex_organizer.config import (
     get_logging_level,
     get_qbittorrent_password,
     get_qbittorrent_username,
+    get_radarr_api_key,
+    get_radarr_enabled,
+    get_radarr_host,
+    get_sonarr_api_key,
+    get_sonarr_enabled,
+    get_sonarr_host,
     get_subtitle_providers,
     get_sync_subtitles,
     get_timestamped_log_files,
@@ -59,6 +65,8 @@ class TestEnsureConfigExists:
         content = config_file.read_text()
         assert "[qBittorrent]" in content
         assert "[Logging]" in content
+        assert "[Sonarr]" in content
+        assert "[Radarr]" in content
 
     def test_removes_unknown_options(self, config_dir):
         """Verify unknown options are removed during config validation."""
@@ -178,3 +186,51 @@ class TestConfigGetters:  # pylint: disable=too-many-public-methods
         providers = get_subtitle_providers()
         assert isinstance(providers, list)
         assert len(providers) > 0
+
+    def test_get_sonarr_enabled_default(self):
+        """Verify Sonarr is disabled by default."""
+        assert get_sonarr_enabled() is False
+
+    def test_get_sonarr_host_default(self):
+        """Verify default Sonarr host."""
+        assert get_sonarr_host() == "http://localhost:8989"
+
+    def test_get_sonarr_api_key_default(self):
+        """Verify Sonarr API key defaults to empty string."""
+        assert get_sonarr_api_key() == ""
+
+    def test_get_radarr_enabled_default(self):
+        """Verify Radarr is disabled by default."""
+        assert get_radarr_enabled() is False
+
+    def test_get_radarr_host_default(self):
+        """Verify default Radarr host."""
+        assert get_radarr_host() == "http://localhost:7878"
+
+    def test_get_radarr_api_key_default(self):
+        """Verify Radarr API key defaults to empty string."""
+        assert get_radarr_api_key() == ""
+
+    def test_sonarr_enabled_when_set(self, config_dir):
+        """Verify Sonarr reads as enabled when set to true."""
+        config_file = config_dir / "config.ini"
+        content = config_file.read_text()
+        config_file.write_text(
+            content.replace(
+                "[Sonarr]\nenabled = false",
+                "[Sonarr]\nenabled = true",
+            )
+        )
+        assert get_sonarr_enabled() is True
+
+    def test_radarr_enabled_when_set(self, config_dir):
+        """Verify Radarr reads as enabled when set to true."""
+        config_file = config_dir / "config.ini"
+        content = config_file.read_text()
+        config_file.write_text(
+            content.replace(
+                "[Radarr]\nenabled = false",
+                "[Radarr]\nenabled = true",
+            )
+        )
+        assert get_radarr_enabled() is True
