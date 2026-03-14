@@ -127,4 +127,4 @@ def main(start_dir: str, torrent_hash: str | None):
         for directory in directories:
             _process_directory(directory)
     except (OSError, ValueError) as e:
-        log_error(f"Unhandeled entrypoint error occured: {e}")
+        log_error(f"Unhandled entrypoint error occurred: {e}")
