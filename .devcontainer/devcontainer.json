@@ -10,7 +10,7 @@
     "source=vscode-server-data,target=/root/.vscode-server/data,type=volume"
   ],
   "remoteUser": "vscode",
-  "postCreateCommand": "python3 -m venv venv && ./venv/bin/python -m pip install --upgrade pip && ./venv/bin/python -m pip install -r requirements.txt",
+  "postCreateCommand": "python3 -m venv venv && ./venv/bin/python -m pip install --upgrade pip && ./venv/bin/python -m pip install -e '.[dev]'",
   "customizations": {
     "vscode": {
       "settings": {

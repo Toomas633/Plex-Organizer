@@ -12,8 +12,6 @@
 - [Usage](#usage)
   - [Manual running](#manual-running)
   - [Automated running](#automated-running)
-- [Dev Container (VS Code)](#dev-container-vs-code)
-- [Contributing](#contributing)
 - [License](#license)
 - [Issues and Feature Requests](#issues-and-feature-requests)
 
@@ -29,14 +27,18 @@ Plex Organizer is a Python-based utility designed to help manage and organize me
 - **Directory Management**: Moves directories to their appropriate locations and deletes empty directories.
 - **Customizable Directories**: Supports separate directories for TV shows and movies.
 - **Handle Plex:** Handles plex directories and optimized versions.
-- **Audio language tagging (optional)**: If enabled, detects missing audio track languages and writes ISO 639-2 tags into the container metadata (uses `ffprobe`/`ffmpeg` + `faster-whisper`).
-- **Subtitle embedding (optional)**: If enabled, embeds external subtitles into the video file and tags subtitle language/type metadata (uses `ffprobe`/`ffmpeg` + `langdetect`).
-- **Config file:** Ini file for common configuration options that can be set, disabled or enabled (_beware, some settings might not do anything if already run and info removed from file names, for example turning off quality inclusion and then enabling it_)
+- **Audio language tagging (optional)**: If enabled, detects missing audio track languages and writes ISO 639-2 tags into the container metadata (uses `faster-whisper` + bundled `ffmpeg`/`ffprobe`).
+- **Subtitle embedding (optional)**: If enabled, embeds external subtitles into the video file and tags subtitle language/type metadata (uses bundled `ffmpeg`/`ffprobe` + `langdetect`).
+- **Subtitle fetching (optional)**: If enabled, searches free online subtitle providers (OpenSubtitles, Podnapisi, Gestdown, TVsubtitles) for missing subtitles in configured languages and embeds them into videos that lack those subtitle streams.
+- **Subtitle syncing (optional)**: If enabled, synchronizes embedded subtitle timing to the audio track using `ffsubsync`. Only text-based subtitle streams are synced; bitmap formats (PGS, VobSub) are left unchanged.
+- **Quality detection fallback**: When `include_quality` is enabled but no quality tag (e.g. `1080p`) is found in the filename, the organizer probes the actual video stream height via `ffprobe` and maps it to the nearest standard label (`2160p`, `1440p`, `1080p`, `720p`, `480p`).
+- **Config file:** Ini file for common configuration options that can be set, disabled or enabled
 
 Notes:
 
 - Cleanup is intentionally aggressive: only video files (`.mkv`, `.mp4`), in-progress qBittorrent files (`.!qB`), and the organizer index file (`.plex_organizer.index`) are kept. Subtitle files/folders (e.g. `Subs/`, `Subtitles/`) are removed.
 - The organizer keeps a per-library index (`.plex_organizer.index`) so already-processed files can be skipped on future runs.
+- If the start directory is not a recognised media folder (does not contain `tv` or `movies` in its path and is not a main folder with `tv/` or `movies/` subfolders), the organizer removes the torrent (if a hash was provided) and exits — no files are deleted, moved, or modified.
 - If qBittorrent torrent removal is enabled (by providing a torrent hash), the qBittorrent Web API must be reachable and credentials must be set.
 
 ### Example Directory Structure
@@ -110,37 +112,44 @@ start_directory/
 
 ## Requirements
 
-- Python 3.x
-- Dependencies listed in `requirements.txt`
-- `ffmpeg`/`ffprobe` on PATH (required if `enable_audio_tagging = true` and/or `enable_subtitle_embedding = true`)
+- Python 3.10+
+- **Root privileges** — the organizer must be run as root (`sudo`)
+
+## Data directory
+
+By default, `config.ini`, log files, and the lock file are stored in `/root/.config/plex-organizer/`.
+
+The location can be overridden with the `PLEX_ORGANIZER_DIR` environment variable, or by running from a directory that already contains a `config.ini`.
 
 ## Installation
 
-1. Clone the repository:
+Install directly from GitHub with [pipx](https://pipx.pypa.io/) (recommended) — no need to clone the repo.
 
-   ```bash
-   git clone https://github.com/Toomas633/Plex-Organizer.git
-   cd Plex-Organizer
-   ```
-
-2. Install dependencies (recommended):
+Since the organizer requires root privileges, install as root so the command is available on root's PATH:
 
 ```bash
-bash ./install.sh
+sudo pipx install git+https://github.com/Toomas633/Plex-Organizer.git
+sudo pipx ensurepath
 ```
 
-Or, to upgrade already-installed dependencies:
+This gives you the `plex-organizer` command on root's PATH.
+
+Run the main pipeline:
 
 ```bash
-bash ./install.sh --upgrade
+sudo plex-organizer <start_dir> [torrent_hash]
+```
+
+Launch the interactive management menu (logs, config migration, custom runs):
+
+```bash
+plex-organizer --manage
 ```
 
 ## Update
 
-To update to the latest version just run update.sh (it will also run `install.sh` afterwards).
-
 ```bash
-./update.sh
+sudo pipx upgrade plex-organizer
 ```
 
 ## Configuration
@@ -160,7 +169,7 @@ Key sections:
   - `password`: Password to authenticate with
 - `[Settings]`
   - `delete_duplicates`: If `true`, deletes source files when the destination already exists.
-  - `include_quality`: If `true`, appends quality like `1080p` to renamed files.
+  - `include_quality`: If `true`, appends quality like `1080p` to renamed files. When the filename lacks a quality tag, the organizer probes the video stream height via `ffprobe` as a fallback.
   - `capitalize`: If `true`, title-cases show/movie names.
   - `cpu_threads`: Limits CPU parallelism for some processing steps.
 - `[Logging]`
@@ -174,8 +183,11 @@ Key sections:
   - `whisper_model_size`: Whisper model size for `faster-whisper` (default `tiny`).
 - `[Subtitles]`
   - `enable_subtitle_embedding`: If `true`, embeds external subtitles and tags metadata before subtitle files/folders are removed.
-
-**NB!!** Make sure the qBittorrent `host` is correct. Torrent removal is best-effort: failures are logged and processing continues.
+  - `analyze_embedded_subtitles`: If `true` (default), also analyzes already-embedded subtitle streams for missing/unknown language tags and writes detected language and SDH metadata back into the container. When `false`, only externally embedded subtitles are tagged.
+  - `fetch_subtitles`: Comma-separated list of ISO 639-2 language codes to fetch (e.g. `eng` or `eng, est`). Leave empty to disable. Default: `eng`.
+  - `subtitle_providers`: Comma-separated list of subtitle providers for fetching (default: `opensubtitles, podnapisi, gestdown, tvsubtitles`).
+  - `sync_subtitles`: If `true`, synchronizes embedded subtitle timing to the audio track after all other subtitle operations. Default: `true`.
+    **NB!!** Make sure the qBittorrent `host` is correct. Torrent removal is best-effort: failures are logged and processing continues.
 
 ## Usage
 
@@ -186,10 +198,8 @@ Start directory should have either...
 
 ### Manual running
 
-To run manually just go to the Plex-Organizer cloned or downloaded folder and run:
-
 ```bash
-./run.sh <start_directory>
+sudo plex-organizer <start_directory>
 ```
 
 ### Automated running
@@ -197,7 +207,7 @@ To run manually just go to the Plex-Organizer cloned or downloaded folder and ru
 Add this command to qBittorrent options under "Run external program on torrent finished":
 
 ```bash
-/bin/bash <path_to_script>/run.sh <start_directory> <torrent_hash>
+sudo plex-organizer <start_directory> <torrent_hash>
 ```
 
 Arguments:
@@ -212,30 +222,6 @@ Example:
 ![Example config image](.github/images/image.png)
 
 For performance reasons it is recommended that **%D** is used instead of entire directory like `/mnt/share`. This way only the specific folder will be organized not entire library on each call. Putting your root directory like `/mnt/share` will remove the torrent with the given hash and process the directories `/mnt/media/tv` and `/mnt/media/movies`.
-
-## Dev Container (VS Code)
-
-This repo includes a VS Code Dev Container configuration.
-
-1. Install Docker (Docker Desktop) and VS Code.
-2. In VS Code: `Dev Containers: Reopen in Container`.
-
-The container includes `ffmpeg` (for `faster-whisper`) and will create/initialize `venv/` + install `requirements.txt` on first create.
-It does not auto-run `test.sh`.
-
-For the same quick verification flow as `test.bat` (but for Linux/Dev Container), run:
-
-```bash
-bash ./test.sh
-```
-
-## Contributing
-
-Contributions are welcome! Please follow these steps:
-
-Fork the repository.
-Create a new branch for your feature or bug fix.Commit your changes and push the branch.
-Open a pull request.
 
 ## License
 

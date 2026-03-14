@@ -1,0 +1,235 @@
+"""
+This module provides functions to access settings from the config.ini file.
+"""
+
+from os.path import join, exists
+from configparser import ConfigParser
+
+from .paths import data_dir
+
+CONFIG_PATH = join(data_dir(), "config.ini")
+
+
+def ensure_config_exists():
+    """
+    Create a default config.ini if it does not exist, or add missing sections/options,
+    preserving user edits.
+    """
+    default_config = {
+        "qBittorrent": {
+            "host": "http://localhost:8081",
+            "username": "admin",
+            "password": "your_password_here",
+        },
+        "Settings": {
+            "delete_duplicates": "false",
+            "include_quality": "true",
+            "capitalize": "true",
+            "cpu_threads": "2",
+        },
+        "Logging": {
+            "enable_logging": "true",
+            "log_file": "plex-organizer.log",
+            "clear_log": "false",
+            "timestamped_log_files": "false",
+            "level": "INFO",
+        },
+        "Audio": {
+            "enable_audio_tagging": "true",
+            "whisper_model_size": "tiny",
+        },
+        "Subtitles": {
+            "enable_subtitle_embedding": "true",
+            "analyze_embedded_subtitles": "true",
+            "fetch_subtitles": "eng",
+            "subtitle_providers": "opensubtitles, podnapisi, gestdown, tvsubtitles",
+            "sync_subtitles": "true",
+        },
+    }
+
+    if exists(CONFIG_PATH):
+        _check_config(default_config)
+    else:
+        _create_config(default_config)
+
+
+def _check_config(default_config: dict):
+    """
+    Check for missing sections/options in config.ini and add them if needed,
+    preserving user edits.
+
+    Args:
+        default_config (dict): The default configuration with required sections and options.
+    """
+    config = _get_config()
+    changed = False
+    for section, options in default_config.items():
+        if not config.has_section(section):
+            config.add_section(section)
+            changed = True
+        existing_options = (
+            set(config.options(section)) if config.has_section(section) else set()
+        )
+        default_options = set(options.keys())
+        for opt in existing_options - default_options:
+            config.remove_option(section, opt)
+            changed = True
+        for key, value in options.items():
+            if not config.has_option(section, key):
+                config.set(section, key, value)
+                changed = True
+    if changed:
+        with open(CONFIG_PATH, "w", encoding="utf-8") as configfile:
+            config.write(configfile)
+
+
+def _create_config(default_config: dict):
+    """
+    Create a new config.ini file with all default sections and options.
+
+    Args:
+        default_config (dict): The default configuration to write.
+    """
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        for section, options in default_config.items():
+            f.write(f"[{section}]\n")
+            for key, value in options.items():
+                f.write(f"{key} = {value}\n")
+            f.write("\n")
+
+
+def _get_config():
+    """Return a ConfigParser object loaded with config.ini."""
+    config = ConfigParser()
+    config.read(CONFIG_PATH)
+    return config
+
+
+def get_host():
+    """Return the qBittorrent host from the config file."""
+    config = _get_config()
+    return config.get("qBittorrent", "host")
+
+
+def get_delete_duplicates():
+    """Return True if duplicate deletion is enabled in settings."""
+    config = _get_config()
+    return config.getboolean("Settings", "delete_duplicates", fallback=False)
+
+
+def get_include_quality():
+    """Return True if quality should be included in settings."""
+    config = _get_config()
+    return config.getboolean("Settings", "include_quality", fallback=True)
+
+
+def get_capitalize():
+    """Return True if file names should be capitalized."""
+    config = _get_config()
+    return config.getboolean("Settings", "capitalize", fallback=True)
+
+
+def get_enable_logging():
+    """Return True if logging is enabled."""
+    config = _get_config()
+    return config.getboolean("Logging", "enable_logging", fallback=True)
+
+
+def get_log_file():
+    """Return the log file path."""
+    config = _get_config()
+    return config.get("Logging", "log_file", fallback="plex-organizer.log")
+
+
+def get_clear_log():
+    """Return True if the log should be cleared on startup."""
+    config = _get_config()
+    return config.getboolean("Logging", "clear_log", fallback=False)
+
+
+def get_timestamped_log_files():
+    """Return True if log files should be timestamped."""
+    config = _get_config()
+    return config.getboolean("Logging", "timestamped_log_files", fallback=False)
+
+
+def get_whisper_model_size():
+    """Return the Whisper model size from the config file."""
+    config = _get_config()
+    return config.get("Audio", "whisper_model_size", fallback="tiny")
+
+
+def get_enable_audio_tagging():
+    """Return True if audio tagging is enabled."""
+    config = _get_config()
+    return config.getboolean("Audio", "enable_audio_tagging", fallback=True)
+
+
+def get_enable_subtitle_embedding():
+    """Return True if subtitle embedding is enabled."""
+    config = _get_config()
+    return config.getboolean("Subtitles", "enable_subtitle_embedding", fallback=True)
+
+
+def get_cpu_threads():
+    """Return the number of CPU threads to use from settings."""
+    config = _get_config()
+    return config.getint("Settings", "cpu_threads", fallback=2)
+
+
+def get_logging_level():
+    """Return the logging level from the config file."""
+    config = _get_config()
+    return config.get("Logging", "level", fallback="INFO")
+
+
+def get_qbittorrent_username():
+    """Return the qBittorrent username from the config file."""
+    config = _get_config()
+    return config.get("qBittorrent", "username")
+
+
+def get_qbittorrent_password():
+    """Return the qBittorrent password from the config file."""
+    config = _get_config()
+    return config.get("qBittorrent", "password")
+
+
+def get_analyze_embedded_subtitles():
+    """Return True if analyzing embedded subtitles is enabled."""
+    config = _get_config()
+    return config.getboolean("Subtitles", "analyze_embedded_subtitles", fallback=False)
+
+
+def get_fetch_subtitles() -> list[str]:
+    """Return the list of ISO 639-2 language codes to fetch, or empty if disabled.
+
+    The config value is a comma-separated string of 3-letter language codes
+    (e.g. ``eng, est``).  An empty value disables subtitle fetching.
+    """
+    config = _get_config()
+    raw = config.get("Subtitles", "fetch_subtitles", fallback="").strip()
+    if not raw:
+        return []
+    return [code.strip().lower() for code in raw.split(",") if code.strip()]
+
+
+def get_sync_subtitles():
+    """Return True if subtitle-to-audio synchronization is enabled."""
+    config = _get_config()
+    return config.getboolean("Subtitles", "sync_subtitles", fallback=True)
+
+
+def get_subtitle_providers() -> list[str]:
+    """Return the list of subtitle provider names for subliminal.
+
+    The config value is a comma-separated string of provider names
+    (e.g. ``gestdown, opensubtitlescom, podnapisi, tvsubtitles``).
+    An empty value falls back to the built-in default list.
+    """
+    default = "opensubtitles, podnapisi, gestdown, tvsubtitles"
+    config = _get_config()
+    raw = config.get("Subtitles", "subtitle_providers", fallback=default).strip()
+    if not raw:
+        raw = default
+    return [p.strip().lower() for p in raw.split(",") if p.strip()]

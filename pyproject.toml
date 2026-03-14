@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "plex-organizer"
+version = "6.0.0"
+description = "Automated media file renaming, organization and metadata tagging for Plex."
+readme = "README.md"
+license = {text = "GPL-3.0-only"}
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.32.5",
+    "chardet>=5.0.0",
+    "faster-whisper>=1.2.1",
+    "langdetect>=1.0.9",
+    "subliminal>=2.6.0",
+    "ffsubsync>=0.4.25",
+    "static-ffmpeg>=2.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=26.1.0",
+    "pylint>=4.0.5",
+    "pytest>=8.0",
+    "pytest-cov>=6.0",
+]
+
+[project.scripts]
+plex-organizer = "plex_organizer.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["plex_organizer*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore:.*doesn't match a supported version:Warning",
+]
+
+[tool.pylint.main]
+max-args = 10
+max-positional-arguments = 10
+
+[tool.pylint."messages control"]
+disable = [
+    "too-many-lines",
+]
