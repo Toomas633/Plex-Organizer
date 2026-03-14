@@ -15,6 +15,8 @@
 - [License](#license)
 - [Issues and Feature Requests](#issues-and-feature-requests)
 
+> **[FAQ](FAQ.md)** · **[Development](DEVELOPMENT.md)**
+
 Plex Organizer is a Python-based utility designed to help manage and organize media files for Plex Media Server. It automates tasks such as renaming files, deleting unwanted files, moving directories, and cleaning up empty folders.
 
 **_NB!! Any data loss is not on me but you can still report any bugs or faults you find in issues_**

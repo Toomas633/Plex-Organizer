@@ -15,6 +15,7 @@ folder containing ``tv/`` and/or ``movies/``), and performs these steps:
 It can also remove a completed torrent from qBittorrent when a torrent hash is provided.
 """
 
+from errno import EAGAIN, EWOULDBLOCK
 from os import walk
 from os.path import join
 from fcntl import flock, LOCK_EX, LOCK_NB
@@ -44,6 +45,8 @@ from .pipeline import (
     get_video_files_to_process,
 )
 
+_lock_handle = None  # pylint: disable=invalid-name
+
 
 def _get_lock():
     """Best-effort single-instance lock.
@@ -51,19 +54,32 @@ def _get_lock():
     Repeatedly attempts to acquire a non-blocking exclusive lock on a lock file.
     If another process holds the lock, the function sleeps and retries.
 
+    The file handle is kept open (in the module-level ``_lock_handle``) for the
+    lifetime of the process so the advisory lock is not released prematurely.
+
     Note: the lock is advisory (``flock``).
     """
+    global _lock_handle  # pylint: disable=global-statement
     lock_file_path = join(data_dir(), ".plex_organizer.lock")
     while True:
         try:
-            with open(lock_file_path, "w", encoding="utf-8") as lock_file:
-                flock(lock_file, LOCK_EX | LOCK_NB)
-                break
-        except OSError:
-            log_debug(
-                "Another instance of plex_organizer.py is already running. Waiting..."
+            _lock_handle = open(  # pylint: disable=consider-using-with
+                lock_file_path, "a", encoding="utf-8"
             )
-            sleep(10)
+            flock(_lock_handle, LOCK_EX | LOCK_NB)
+            break
+        except OSError as exc:
+            if _lock_handle is not None:
+                _lock_handle.close()
+                _lock_handle = None
+            if exc.errno in (EAGAIN, EWOULDBLOCK):
+                log_debug(
+                    "Another instance of Plex Organizer is already running. "
+                    "Waiting..."
+                )
+                sleep(10)
+            else:
+                raise
 
 
 def _process_directory(directory: str):

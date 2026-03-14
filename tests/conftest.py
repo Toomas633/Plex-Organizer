@@ -1,5 +1,7 @@
 """Shared fixtures for Plex Organizer tests."""
 
+# pylint: disable=redefined-outer-name
+
 from warnings import filterwarnings
 from os.path import join
 from pytest import fixture
@@ -24,18 +26,18 @@ def tmp_media_tree(tmp_path):
 
 
 @fixture
-def tmp_tv_show(media_tree):
+def tmp_tv_show(tmp_media_tree):
     """Create a TV show directory with season folders."""
-    show_dir = media_tree / "tv" / "Breaking Bad"
+    show_dir = tmp_media_tree / "tv" / "Breaking Bad"
     show_dir.mkdir(parents=True)
     (show_dir / "Season 01").mkdir()
     return show_dir
 
 
 @fixture
-def tmp_movies_dir(media_tree):
+def tmp_movies_dir(tmp_media_tree):
     """Return the movies directory inside a media tree."""
-    return media_tree / "movies"
+    return tmp_media_tree / "movies"
 
 
 @fixture
