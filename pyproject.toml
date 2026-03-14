@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "plex-organizer"
-version = "6.0.0"
+version = "6.1.0"
 description = "Automated media file renaming, organization and metadata tagging for Plex."
 readme = "README.md"
 license = {text = "GPL-3.0-only"}
