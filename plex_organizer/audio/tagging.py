@@ -26,7 +26,7 @@ from ..ffmpeg_utils import (
     replace_and_restore_timestamps,
     run_cmd,
 )
-from ..log import log_error, log_debug
+from ..log import log_error, log_info, log_debug
 from ..utils import is_plex_folder
 from .whisper import WhisperDetector
 
@@ -394,7 +394,7 @@ def tag_audio_track_languages(video_path: str) -> None:
     if is_plex_folder(video_path) or is_plex_folder(dirname(video_path)):
         return
 
-    log_debug(f"Tagging audio languages for video: {video_path}")
+    log_info(f"Tagging audio languages for video: {video_path}")
 
     try:
         streams = _probe_audio_streams(video_path)

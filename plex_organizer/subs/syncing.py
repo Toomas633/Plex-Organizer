@@ -28,7 +28,7 @@ from ..ffmpeg_utils import (
     replace_and_restore_timestamps,
     run_cmd,
 )
-from ..log import log_debug, log_error
+from ..log import log_debug, log_info, log_error
 from ..utils import is_plex_folder
 from ..const import TEXT_SUB_CODECS, ASS_CODECS
 
@@ -254,7 +254,7 @@ def _sync_video_subtitles(video_path: str) -> None:
         langs = ", ".join(
             f"{metadata[idx]['language']}(s:{idx})" for idx in sorted(synced)
         )
-        log_debug(f"Re-embedding synced subtitles ({langs}) into '{video_path}'")
+        log_info(f"Re-embedding synced subtitles ({langs}) into '{video_path}'")
         _remux_with_synced_subs(video_path, synced, metadata)
     finally:
         cleanup_paths(temp_files)
@@ -276,7 +276,7 @@ def sync_subtitles_in_directory(directory: str, video_paths: List[str]) -> None:
     if is_plex_folder(directory):
         return
 
-    log_debug(f"Starting subtitle sync scan under '{directory}'")
+    log_info(f"Starting subtitle sync scan under '{directory}'")
 
     for video_path in video_paths:
         if not video_path.lower().endswith(VIDEO_EXTENSIONS):

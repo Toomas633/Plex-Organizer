@@ -18,6 +18,11 @@ from .paths import data_dir
 
 SCRIPT_DIR = data_dir()
 
+_LEVEL_RANK = {
+    "DEBUG": 0,
+    "INFO": 1,
+}
+
 
 def _log_message(level: str, message: str):
     """
@@ -77,6 +82,21 @@ def log_duplicate(message: str):
     _log_message("DUPLICATE", message)
 
 
+def log_info(message: str):
+    """
+    Logs an info message to the log file.
+
+    Args:
+        message (str): The info message to log.
+
+    Returns:
+        None
+    """
+    configured = _LEVEL_RANK.get(get_logging_level().upper(), 99)
+    if configured <= _LEVEL_RANK["INFO"]:
+        _log_message("INFO", message)
+
+
 def log_debug(message: str):
     """
     Logs a debug message to the log file.
@@ -87,7 +107,8 @@ def log_debug(message: str):
     Returns:
         None
     """
-    if get_logging_level().upper() == "DEBUG":
+    configured = _LEVEL_RANK.get(get_logging_level().upper(), 99)
+    if configured <= _LEVEL_RANK["DEBUG"]:
         _log_message("DEBUG", message)
 
 

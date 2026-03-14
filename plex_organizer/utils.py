@@ -5,7 +5,7 @@ from os.path import join, exists, isdir
 from shutil import move
 from typing import List
 
-from .log import log_error, log_duplicate
+from .log import log_error, log_info, log_duplicate
 from .config import get_delete_duplicates, get_include_quality, get_capitalize
 
 
@@ -76,6 +76,7 @@ def move_file(source_path: str, destination_path: str):
 
     try:
         move(source_path, destination_path)
+        log_info(f"Moved '{source_path}' to '{destination_path}'")
     except OSError as e:
         log_error(f"Failed to move {source_path} to {destination_path}: {e}")
 

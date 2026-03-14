@@ -429,7 +429,7 @@ class TestMain:
     @patch("plex_organizer.organizer.check_clear_log")
     @patch("plex_organizer.organizer.ensure_config_exists")
     @patch("plex_organizer.organizer.is_media_directory", return_value=False)
-    @patch("plex_organizer.organizer.log_debug")
+    @patch("plex_organizer.organizer.log_info")
     def test_non_media_directory_exits(
         self,
         mock_log,

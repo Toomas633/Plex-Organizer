@@ -33,7 +33,7 @@ from ..ffmpeg_utils import (
     replace_and_restore_timestamps,
     run_cmd,
 )
-from ..log import log_debug, log_error
+from ..log import log_debug, log_info, log_error
 from ..utils import is_plex_folder
 
 region.configure("dogpile.cache.memory", replace_existing_backend=True)
@@ -168,7 +168,7 @@ def _fetch_subtitles_for_video(video_path: str, lang_codes: list[str]) -> None:
         return
 
     langs = ", ".join(lang for _, lang in srt_files)
-    log_debug(f"Embedding fetched subtitles ({langs}) into '{video_path}'")
+    log_info(f"Embedding fetched subtitles ({langs}) into '{video_path}'")
     _embed_srts(video_path, srt_files)
 
 
@@ -189,7 +189,7 @@ def fetch_subtitles_in_directory(directory: str, video_paths: List[str]) -> None
     if is_plex_folder(directory):
         return
 
-    log_debug(f"Starting subtitle fetch scan under '{directory}'")
+    log_info(f"Starting subtitle fetch scan under '{directory}'")
 
     for video_path in video_paths:
         if not video_path.lower().endswith(VIDEO_EXTENSIONS):
