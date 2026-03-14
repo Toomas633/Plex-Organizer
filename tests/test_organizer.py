@@ -3,6 +3,7 @@
 from unittest.mock import patch
 from pytest import mark
 
+import plex_organizer.organizer as organizer_module
 from plex_organizer.organizer import (
     _get_lock,
     _process_directory,
@@ -147,6 +148,13 @@ class TestGetVideoFilesToProcess:
 @mark.usefixtures("default_config")
 class TestGetLock:
     """Tests for _get_lock advisory locking."""
+
+    def teardown_method(self):
+        """Close and reset the module-level lock handle after each test."""
+        # pylint: disable=protected-access
+        if organizer_module._lock_handle is not None:
+            organizer_module._lock_handle.close()
+            organizer_module._lock_handle = None
 
     @patch("plex_organizer.organizer.flock")
     @patch("plex_organizer.organizer.data_dir", return_value="/tmp/po")
