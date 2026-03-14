@@ -872,22 +872,37 @@ def _run_full_pipeline(folder: str, input_fn=input) -> None:
     print()
 
     for directory in _expand_folder(folder):
+        print(f"  {_dim('Processing directory:')} {directory}")
         all_videos = _find_all_videos(directory)
         no_index = _no_index_video_map(directory)
 
         with _pipeline_patches(settings):
+            print(f"    {_dim('Embedding subtitles...')}")
+            for vp in all_videos:
+                print(f"      {_dim(basename(vp))}")
             merge_subtitles_in_directory(directory, video_paths=all_videos)
+            print(f"    {_dim('Fetching subtitles...')}")
+            for vp in all_videos:
+                print(f"      {_dim(basename(vp))}")
             fetch_subtitles_in_directory(directory, video_paths=all_videos)
+            print(f"    {_dim('Syncing subtitles...')}")
+            for vp in all_videos:
+                print(f"      {_dim(basename(vp))}")
             sync_subtitles_in_directory(directory, video_paths=all_videos)
 
+            print(f"    {_dim('Tagging audio, cleaning up & moving files...')}")
             for root, _, files in walk(directory, topdown=False):
                 videos = get_video_files_to_process(root, files, no_index)
+                for v in videos:
+                    print(f"      {_dim(v)}")
                 analyze_video_languages(root, videos)
                 delete_unwanted_files(root, files)
                 move_directories(directory, root, videos)
 
+            print(f"    {_dim('Deleting empty folders...')}")
             delete_empty_directories(directory)
 
+    print(f"  {_dim('Updating index...')}")
     _update_index_after_custom_run(folder)
 
 
@@ -897,7 +912,10 @@ def _run_embed_subs(folder: str, input_fn=input) -> None:
     print()
 
     for directory in _expand_folder(folder):
+        print(f"  {_dim('Embedding subtitles in:')} {directory}")
         vids = _find_all_videos(directory)
+        for vp in vids:
+            print(f"    {_dim(basename(vp))}")
         with (
             patch(
                 "plex_organizer.subs.embedding.get_enable_subtitle_embedding",
@@ -910,6 +928,7 @@ def _run_embed_subs(folder: str, input_fn=input) -> None:
         ):
             merge_subtitles_in_directory(directory, video_paths=vids)
 
+    print(f"  {_dim('Updating index...')}")
     _update_index_after_custom_run(folder)
 
 
@@ -924,25 +943,33 @@ def _run_fetch_subs(folder: str, input_fn=input) -> None:
         return
 
     for directory in _expand_folder(folder):
+        print(f"  {_dim('Fetching subtitles in:')} {directory}")
         vids = _find_all_videos(directory)
+        for vp in vids:
+            print(f"    {_dim(basename(vp))}")
         with patch(
             "plex_organizer.subs.fetching.get_fetch_subtitles",
             return_value=langs,
         ):
             fetch_subtitles_in_directory(directory, video_paths=vids)
 
+    print(f"  {_dim('Updating index...')}")
     _update_index_after_custom_run(folder)
 
 
 def _run_sync_subs(folder: str, **_kwargs) -> None:
     for directory in _expand_folder(folder):
+        print(f"  {_dim('Syncing subtitles in:')} {directory}")
         vids = _find_all_videos(directory)
+        for vp in vids:
+            print(f"    {_dim(basename(vp))}")
         with patch(
             "plex_organizer.subs.syncing.get_sync_subtitles",
             return_value=True,
         ):
             sync_subtitles_in_directory(directory, video_paths=vids)
 
+    print(f"  {_dim('Updating index...')}")
     _update_index_after_custom_run(folder)
 
 
@@ -952,21 +979,28 @@ def _run_tag_audio(folder: str, input_fn=input) -> None:
     print()
 
     for directory in _expand_folder(folder):
+        print(f"  {_dim('Tagging audio in:')} {directory}")
         with patch(
             "plex_organizer.audio.tagging.get_cpu_threads",
             return_value=cpu,
         ):
             for video_path in _find_all_videos(directory):
+                print(f"    {_dim(basename(video_path))}")
                 tag_audio_track_languages(video_path)
 
+    print(f"  {_dim('Updating index...')}")
     _update_index_after_custom_run(folder)
 
 
 def _run_cleanup(folder: str, **_kwargs) -> None:
     for directory in _expand_folder(folder):
+        print(f"  {_dim('Cleaning up:')} {directory}")
         for root, _, files in walk(directory, topdown=False):
+            for f in files:
+                print(f"    {_dim(f)}")
             delete_unwanted_files(root, files)
 
+    print(f"  {_dim('Updating index...')}")
     _update_index_after_custom_run(folder)
 
 
@@ -978,6 +1012,7 @@ def _run_rename_move(folder: str, input_fn=input) -> None:
     print()
 
     for directory in _expand_folder(folder):
+        print(f"  {_dim('Renaming & moving in:')} {directory}")
         no_index = _no_index_video_map(directory)
         with (
             patch(
@@ -1000,15 +1035,20 @@ def _run_rename_move(folder: str, input_fn=input) -> None:
                     if f.lower().endswith(VIDEO_EXTENSIONS)
                     and not no_index.get(join(root, f), False)
                 ]
+                for v in videos:
+                    print(f"    {_dim(v)}")
                 move_directories(directory, root, videos)
 
+    print(f"  {_dim('Updating index...')}")
     _update_index_after_custom_run(folder)
 
 
 def _run_delete_empty(folder: str, **_kwargs) -> None:
     for directory in _expand_folder(folder):
+        print(f"  {_dim('Deleting empty folders in:')} {directory}")
         delete_empty_directories(directory)
 
+    print(f"  {_dim('Updating index...')}")
     _update_index_after_custom_run(folder)
 
 
