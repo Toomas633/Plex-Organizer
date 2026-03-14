@@ -15,6 +15,7 @@ dependencies = [
     "faster-whisper>=1.2.1",
     "langdetect>=1.0.9",
     "subliminal>=2.6.0",
+    "webrtcvad-wheels>=2.0.10",
     "ffsubsync>=0.4.25",
     "static-ffmpeg>=2.7",
 ]
