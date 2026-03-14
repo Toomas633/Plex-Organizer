@@ -3,7 +3,6 @@ set -euo pipefail
 
 SOURCE_DIR="testData"
 TARGET_DIR="testEnv"
-PYTHON_SCRIPT="plex_organizer"
 VENV_DIR="venv"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -72,11 +71,11 @@ else
   exit 1
 fi
 
-if [[ -d "$ROOT_DIR/$PYTHON_SCRIPT" ]]; then
-  echo "Running $PYTHON_SCRIPT..."
+if command -v plex-organizer >/dev/null 2>&1; then
+  echo "Running plex-organizer..."
   plex-organizer "$FULL_TARGET_DIR"
 else
-  echo "Package $PYTHON_SCRIPT not found!"
+  echo "plex-organizer CLI not found! Is the package installed?"
   exit 1
 fi
 
