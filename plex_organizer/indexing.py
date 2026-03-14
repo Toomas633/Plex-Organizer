@@ -53,7 +53,6 @@ def _read_index(path: str) -> Dict[str, Any]:
         with open(path, "r", encoding="utf-8") as f:
             payload = load(f)
     except FileNotFoundError:
-        log_error(f"Index file not found at path: {path}")
         return {"files": {}}
     except (OSError, JSONDecodeError):
         log_error(f"Error reading index file at path: {path}")
