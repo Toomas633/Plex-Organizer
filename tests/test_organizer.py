@@ -1,8 +1,9 @@
 """Tests for plex_organizer.organizer helper functions."""
 
+from errno import EAGAIN
 from sys import modules
 from unittest.mock import patch
-from pytest import mark
+from pytest import mark, raises
 
 from plex_organizer.organizer import (
     _get_lock,
@@ -175,7 +176,9 @@ class TestGetLock:
             nonlocal call_count
             call_count += 1
             if call_count < 3:
-                raise OSError("Resource temporarily unavailable")
+                err = OSError("Resource temporarily unavailable")
+                err.errno = EAGAIN
+                raise err
 
         with (
             patch("plex_organizer.organizer.data_dir", return_value=str(tmp_path)),
@@ -185,6 +188,17 @@ class TestGetLock:
 
         assert mock_sleep.call_count == 2
         assert mock_debug.call_count == 2
+
+    def test_raises_on_non_contention_error(self, tmp_path):
+        """Non-contention OSErrors (e.g. permission denied) are re-raised."""
+        perm_err = PermissionError("Permission denied")
+
+        with (
+            patch("plex_organizer.organizer.data_dir", return_value=str(tmp_path)),
+            patch("plex_organizer.organizer.flock", side_effect=perm_err),
+            raises(PermissionError, match="Permission denied"),
+        ):
+            _get_lock()
 
 
 @mark.usefixtures("default_config")
