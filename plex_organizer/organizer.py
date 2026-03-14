@@ -63,7 +63,7 @@ def _get_lock():
     while True:
         try:
             _lock_handle = open(  # pylint: disable=consider-using-with
-                lock_file_path, "w", encoding="utf-8"
+                lock_file_path, "a", encoding="utf-8"
             )
             flock(_lock_handle, LOCK_EX | LOCK_NB)
             break
