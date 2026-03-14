@@ -15,7 +15,7 @@ folder containing ``tv/`` and/or ``movies/``), and performs these steps:
 It can also remove a completed torrent from qBittorrent when a torrent hash is provided.
 """
 
-from errno import EAGAIN, EACCES, EWOULDBLOCK
+from errno import EAGAIN, EWOULDBLOCK
 from os import walk
 from os.path import join
 from fcntl import flock, LOCK_EX, LOCK_NB
@@ -72,7 +72,7 @@ def _get_lock():
             if _lock_handle is not None:
                 _lock_handle.close()
                 _lock_handle = None
-            if exc.errno in (EAGAIN, EACCES, EWOULDBLOCK):
+            if exc.errno in (EAGAIN, EWOULDBLOCK):
                 log_debug(
                     "Another instance of Plex Organizer is already running. "
                     "Waiting..."
