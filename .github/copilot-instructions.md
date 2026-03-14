@@ -217,7 +217,7 @@ Detailed, topic-specific rules live in `.github/copilot-rules/` and are auto-act
 | `ffmpeg-usage.md`     | `plex_organizer/**`                               | Use `get_ffmpeg()`/`get_ffprobe()` from `ffmpeg_utils.py`; remux to temp then replace; log failures                    |
 | `indexing.md`         | `plex_organizer/indexing.py`, `plex_organizer/**` | Index only final-layout names; movies root vs show root; `.plex_organizer.index` protected from cleanup                |
 | `release-notes.md`    | `release/**`                                      | Version numbering (major/minor); gather changes from git log; bold-label bullet style; sub-sections for major releases |
-| `validation.md`       | `plex_organizer/**`, `tests/**`                   | Post-change checklist: run SonarQube analysis, pylint, and pytest after every change before considering task complete  |
+| `validation.md`       | `plex_organizer/**`, `tests/**`                   | Post-change checklist: run Sonar scan, pylint, and pytest after every change before considering task complete          |
 
 ## Tooling
 

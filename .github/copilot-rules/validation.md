@@ -7,7 +7,7 @@ globs: plex_organizer/**/*.py, tests/**/*.py
 
 After making any code change, always run these checks in order before considering the task complete:
 
-1. **SonarQube analysis**: Run the SonarQube analysis tool on each changed file and resolve any flags (bugs, code smells, vulnerabilities, security hotspots).
+1. **Sonar scan**: Run the Sonar scan on each changed file and resolve any flags (bugs, code smells, vulnerabilities, security hotspots).
 2. **Pylint**: Run `pylint` on the changed files (or the relevant package) and fix any new errors or warnings.
    ```bash
    pylint plex_organizer/ tests/
