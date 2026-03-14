@@ -7,7 +7,7 @@ and logging errors or duplicates.
 from os import makedirs
 from os.path import join, splitext, exists
 from re import findall as re_findall, match as re_match, sub
-from .log import log_error
+from .log import log_error, log_info
 from .ffmpeg_utils import probe_video_quality
 from .utils import move_file, create_name, capitalize, find_corrected_directory
 
@@ -86,6 +86,8 @@ def move(directory: str, root: str, file: str) -> str:
 
     source_path = join(root, file)
     destination_path = join(movie_dir, new_name)
+
+    log_info(f"Renaming movie '{file}' to '{new_name}'")
 
     if source_path == destination_path:
         return destination_path

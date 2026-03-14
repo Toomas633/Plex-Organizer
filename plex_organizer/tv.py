@@ -9,6 +9,7 @@ from os.path import join, splitext, exists
 from re import compile as re_compile, IGNORECASE
 
 from .ffmpeg_utils import probe_video_quality
+from .log import log_info
 from .utils import move_file, create_name, capitalize, find_corrected_directory
 
 
@@ -67,6 +68,7 @@ def move(root: str, file: str) -> str:
         None
     """
     new_name = _create_name(root, file)
+    log_info(f"Renaming TV episode '{file}' to '{new_name}'")
 
     season_match = re_compile(r"S(\d{2})", IGNORECASE).search(new_name)
     season = int(season_match.group(1)) if season_match else 0

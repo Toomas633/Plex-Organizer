@@ -36,7 +36,7 @@ from ..ffmpeg_utils import (
     replace_and_restore_timestamps,
     run_cmd,
 )
-from ..log import log_error, log_debug
+from ..log import log_error, log_info, log_debug
 from ..utils import is_plex_folder
 
 DetectorFactory.seed = 0
@@ -772,7 +772,7 @@ def merge_subtitles_in_directory(directory: str, video_paths: list[str]):
     if is_plex_folder(directory):
         return
 
-    log_debug(f"Starting subtitle merging scan under directory: {directory}")
+    log_info(f"Starting subtitle merging scan under directory: {directory}")
 
     if get_analyze_embedded_subtitles():
         _tag_embedded_subtitle_languages_for_videos(video_paths)
@@ -781,6 +781,10 @@ def merge_subtitles_in_directory(directory: str, video_paths: list[str]):
     plans = [p for p in _discover_plans(directory) if p.video_path in allowed]
     try:
         for plan in plans:
+            log_info(
+                f"Embedding subtitles for video: {plan.video_path} "
+                f"({len(plan.subtitle_paths)} subtitle file(s))"
+            )
             log_debug(
                 f"Embedding subtitles for video: {plan.video_path} "
                 f"from files: {plan.subtitle_paths}"

@@ -2,7 +2,13 @@
 
 from unittest.mock import patch
 
-from plex_organizer.log import check_clear_log, log_debug, log_duplicate, log_error
+from plex_organizer.log import (
+    check_clear_log,
+    log_debug,
+    log_duplicate,
+    log_error,
+    log_info,
+)
 
 
 class TestLogFunctions:
@@ -41,6 +47,33 @@ class TestLogFunctions:
         log_file = default_config / "plex-organizer.log"
         content = log_file.read_text()
         assert "visible debug" in content
+
+    def test_log_info_writes_when_info_level(self, default_config):
+        """log_info writes an INFO entry when logging level is INFO."""
+        log_info("info msg")
+        log_file = default_config / "plex-organizer.log"
+        assert log_file.exists()
+        content = log_file.read_text()
+        assert "[INFO]" in content
+        assert "info msg" in content
+
+    def test_log_info_writes_when_debug_level(self, default_config):
+        """log_info writes an INFO entry when logging level is DEBUG."""
+        with patch("plex_organizer.log.get_logging_level", return_value="DEBUG"):
+            log_info("info at debug")
+        log_file = default_config / "plex-organizer.log"
+        content = log_file.read_text()
+        assert "[INFO]" in content
+        assert "info at debug" in content
+
+    def test_log_info_not_written_when_level_above(self, default_config):
+        """log_info does not write when logging level is above INFO."""
+        with patch("plex_organizer.log.get_logging_level", return_value="ERROR"):
+            log_info("should not appear")
+        log_file = default_config / "plex-organizer.log"
+        if log_file.exists():
+            content = log_file.read_text()
+            assert "should not appear" not in content
 
     def test_logging_disabled(self, default_config):
         """No log entry is written when logging is disabled."""

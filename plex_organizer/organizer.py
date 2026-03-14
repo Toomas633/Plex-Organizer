@@ -21,7 +21,7 @@ from os.path import join
 from fcntl import flock, LOCK_EX, LOCK_NB
 from time import sleep
 
-from .log import log_error, check_clear_log, log_debug
+from .log import log_error, log_info, check_clear_log, log_debug
 from .qb import remove_torrent
 from .utils import (
     is_tv_dir,
@@ -87,7 +87,7 @@ def _process_directory(directory: str):
     if is_tv_dir(directory):
         migrated = migrate_show_indexes_to_tv_root(directory)
         if migrated:
-            log_debug(
+            log_info(
                 f"Auto-migrated {migrated} per-show index(es) to TV root: {directory}"
             )
 
@@ -116,7 +116,7 @@ def main(start_dir: str, torrent_hash: str | None):
     ensure_config_exists()
     check_clear_log()
     _get_lock()
-    log_debug(
+    log_info(
         f"Starting Plex Organizer with directory: {start_dir} and torrent hash: {torrent_hash}"
     )
 
@@ -125,7 +125,7 @@ def main(start_dir: str, torrent_hash: str | None):
             remove_torrent(torrent_hash)
 
         if not is_media_directory(start_dir):
-            log_debug(
+            log_info(
                 f"Directory '{start_dir}' is not a recognised media folder. "
                 "Keeping files and exiting."
             )
@@ -139,7 +139,7 @@ def main(start_dir: str, torrent_hash: str | None):
             ]
         else:
             directories = [start_dir]
-        log_debug(f"Processing directories: {directories}")
+        log_info(f"Processing directories: {directories}")
         for directory in directories:
             _process_directory(directory)
     except (OSError, ValueError) as e:

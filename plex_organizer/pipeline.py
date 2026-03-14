@@ -8,7 +8,7 @@ from .audio.tagging import tag_audio_track_languages
 from .config import get_enable_audio_tagging
 from .const import UNWANTED_FOLDERS, VIDEO_EXTENSIONS, EXT_FILTER
 from .indexing import mark_indexed, should_index_video, index_root_for_path
-from .log import log_error, log_debug
+from .log import log_error, log_info, log_debug
 from .movie import move as movie_move
 from .tv import move as tv_move
 from .utils import (
@@ -33,6 +33,7 @@ def analyze_video_languages(root: str, video_files: list[str]):
     if not get_enable_audio_tagging():
         return
 
+    log_info(f"Analyzing audio languages in '{root}'")
     for file in video_files:
         if is_plex_folder(root) or is_script_temp_file(file):
             continue
@@ -101,7 +102,9 @@ def move_directories(directory: str, root: str, video_files: list[str]):
 
     def _move_one(file_name: str) -> str:
         if is_tv_dir(root):
+            log_info(f"Moving TV file '{file_name}' from '{root}'")
             return tv_move(root, file_name)
+        log_info(f"Moving movie file '{file_name}' from '{root}'")
         return movie_move(directory, root, file_name)
 
     def _try_mark(idx_root: str, final_path: str) -> None:
