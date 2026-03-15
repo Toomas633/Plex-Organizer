@@ -206,6 +206,8 @@ sudo plex-organizer <start_dir> [torrent_hash]
 sudo python -m plex_organizer <start_dir> [torrent_hash]
 ```
 
+> **Note:** `pipx` installs the binary to `/root/.local/bin/`. If another user needs to call `sudo plex-organizer`, create a symlink: `sudo ln -s /root/.local/bin/plex-organizer /usr/local/bin/plex-organizer`. See the [README](README.md#installation) for details on qBittorrent automation (`"%D" "%I"`), Sonarr/Radarr Custom Script setup, and Docker/Kubernetes deployment.
+
 ### Test data
 
 Place sample media structures under `testData/`. The directory is bind-mounted into the Dev Container. `testEnv/` is the disposable working copy and is `.gitignore`d.

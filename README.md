@@ -137,6 +137,12 @@ sudo pipx ensurepath
 
 This gives you the `plex-organizer` command on root's PATH.
 
+> **Making it available for other users:** `pipx` installs the binary to `/root/.local/bin/`, which is only on root's `PATH`. If another user (e.g. a `qbittorrent` service account) needs to call `sudo plex-organizer`, create a symlink into a system-wide directory:
+>
+> ```bash
+> sudo ln -s /root/.local/bin/plex-organizer /usr/local/bin/plex-organizer
+> ```
+
 Run the main pipeline:
 
 ```bash
@@ -218,31 +224,84 @@ sudo plex-organizer <start_directory>
 
 #### Via qBittorrent (standalone)
 
-Add this command to qBittorrent options under "Run external program on torrent finished":
+Use this method when running Plex Organizer **without** Sonarr/Radarr. Add this command to qBittorrent options under **"Run external program on torrent finished"**:
 
 ```bash
-sudo plex-organizer <start_directory> <torrent_hash>
+sudo plex-organizer "%D" "%I"
 ```
 
 Arguments:
 
-- `<start_directory>`: The base directory containing the tv and movies subdirectories or %D in qBittorrent ui.
-- `<torrent_hash>`: **Optional:** The hash of the torrent to be removed (omit for testing purposes or to ignore torrent automatic removal). Argument %I in qBittorrent ui.
+- `%D` — Torrent save path (the directory where qBittorrent saved the files).
+- `%I` — Torrent hash. **Optional:** omit for testing or to skip automatic torrent removal.
 
-**Be sure to put arguments between "%D" to avoid whitespace cuttofs**
+> **Important:** Always wrap `%D` in double quotes (`"%D"`) to handle paths with spaces.
+
+**Running as a different user:**
+
+qBittorrent often runs under a non-root service account (e.g. `qbittorrent`, `debian`). Since Plex Organizer requires root, `sudo` must be able to run without a password prompt. Add a sudoers rule:
+
+```bash
+# /etc/sudoers.d/plex-organizer
+qbittorrent ALL=(root) NOPASSWD: /usr/local/bin/plex-organizer
+```
+
+Replace `qbittorrent` with the actual user that qBittorrent runs as. You can verify with:
+
+```bash
+ps -o user= -p $(pgrep -f qbittorrent-nox)
+```
+
+Adjust the path in the sudoers rule to match your installation (`which plex-organizer`).
+
+**How it works:**
+
+- The organizer renames and moves files into the final Plex layout, then removes the torrent from qBittorrent (files are kept on disk since they have already been moved to their destination).
+- Subtitle embedding, fetching, syncing, audio tagging, and cleanup all run as configured.
+
+> **Note:** If you are using Sonarr/Radarr integration (see below), do **not** also configure qBittorrent to run `plex-organizer`. Let the \*arr app trigger it via Custom Script instead — otherwise files will be processed twice.
 
 Example:
 
 ![Example config image](.github/images/image.png)
 
-For performance reasons it is recommended that **%D** is used instead of entire directory like `/mnt/share`. This way only the specific folder will be organized not entire library on each call. Putting your root directory like `/mnt/share` will remove the torrent with the given hash and process the directories `/mnt/media/tv` and `/mnt/media/movies`.
+For performance reasons it is recommended that `%D` is used instead of an entire directory like `/mnt/share`. This way only the specific torrent folder is organized, not the entire library on each call. Putting your root directory like `/mnt/share` will remove the torrent with the given hash and process the directories `/mnt/media/tv` and `/mnt/media/movies`.
 
 #### Via Sonarr / Radarr (Custom Script)
 
-When Sonarr or Radarr integration is enabled in `config.ini`, you can set up Plex Organizer as a **Custom Script** connection:
+When Sonarr or Radarr integration is enabled in `config.ini`, you can set up Plex Organizer as a **Custom Script** connection. Since Sonarr/Radarr typically run as their own service user, the script needs root privileges — use a wrapper script that calls `sudo`:
 
-1. In Sonarr/Radarr go to **Settings → Connect → + → Custom Script**.
-2. Set **Path** to the `plex-organizer` executable (e.g. `/root/.local/bin/plex-organizer`).
+**1. Create a wrapper script:**
+
+```bash
+sudo tee /usr/local/bin/plex-organizer-sudo > /dev/null << 'EOF'
+#!/bin/bash
+sudo plex-organizer "$@"
+EOF
+sudo chmod +x /usr/local/bin/plex-organizer-sudo
+```
+
+**2. Allow the Sonarr/Radarr user to run it without a password:**
+
+```bash
+# /etc/sudoers.d/plex-organizer
+sonarr ALL=(root) NOPASSWD: /usr/local/bin/plex-organizer
+radarr ALL=(root) NOPASSWD: /usr/local/bin/plex-organizer
+```
+
+Replace `sonarr`/`radarr` with the actual users your services run as. Verify with:
+
+```bash
+ps -o user= -p $(pgrep -f Sonarr)
+ps -o user= -p $(pgrep -f Radarr)
+```
+
+> **Note:** If you installed via `pipx` and haven't created the symlink described in the [Installation](#installation) section, use the full path `/root/.local/bin/plex-organizer` in the sudoers rule and wrapper script instead.
+
+**3. Configure the Custom Script in Sonarr/Radarr:**
+
+1. Go to **Settings → Connect → + → Custom Script**.
+2. Set **Path** to `/usr/local/bin/plex-organizer-sudo`.
 3. Select **On Download** and/or **On Rename** triggers.
 4. Click **Test** to verify the connection (the organizer will log "test event — OK" and exit cleanly).
 
@@ -255,6 +314,34 @@ When triggered this way, the organizer automatically detects Sonarr/Radarr envir
 - The completed torrent is removed from qBittorrent with `deleteFiles=true` so downloaded source files are cleaned up.
 - After processing, a targeted library rescan is sent to the \*arr app. If the specific series/movie is not found, a full library rescan is triggered instead.
 - All API calls are best-effort: failures are logged and processing continues.
+
+**Docker / Kubernetes:**
+
+Custom Scripts run _inside_ the Sonarr/Radarr container, so `plex-organizer` must be available there. The Sonarr/Radarr containers typically run as root, so no sudo wrapper is needed.
+
+1. **Install `plex-organizer` inside the container.** The easiest approach is to create a custom image:
+
+   ```dockerfile
+   FROM linuxserver/sonarr:latest
+   RUN pip install --break-system-packages git+https://github.com/Toomas633/Plex-Organizer.git
+   ```
+
+   Alternatively, mount a host-side install into the container and install dependencies at startup via a [custom init script](https://docs.linuxserver.io/general/container-customization/#custom-scripts).
+
+2. **Ensure shared media paths.** The media directories must be mounted into the Sonarr/Radarr container at paths the organizer can access. Use the same mount paths across containers to avoid mismatches (e.g. `/data/tv`, `/data/movies`).
+
+3. **qBittorrent connectivity.** The `[qBittorrent] host` in `config.ini` must be reachable from inside the container (e.g. `http://qbittorrent:8081` if using Docker Compose service names, or the host IP).
+
+4. **Config persistence.** Mount a host directory or volume to the organizer's data path so `config.ini` and logs survive container restarts:
+
+   ```yaml
+   volumes:
+     - /path/to/plex-organizer-config:/root/.config/plex-organizer
+   ```
+
+   Or set the `PLEX_ORGANIZER_DIR` environment variable to a mounted path.
+
+5. **Set the Custom Script path** to `plex-organizer` (or `which plex-organizer` inside the container to find the full path).
 
 ## License
 

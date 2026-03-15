@@ -138,6 +138,8 @@ tests/
   - Auth is implemented via `/api/v2/auth/login` using `[qBittorrent] username/password`.
   - Torrent removal is best-effort: failures are logged; processing continues.
   - When Sonarr/Radarr integration is enabled, `deleteFiles=true` is used so downloaded files are cleaned up after the \*arr app has imported them.
+  - qBittorrent automation: `sudo plex-organizer "%D" "%I"` in "Run external program on torrent finished". Non-root qBittorrent users need a NOPASSWD sudoers rule and the `/usr/local/bin/plex-organizer` symlink.
+  - Sonarr/Radarr Custom Script: a `plex-organizer-sudo` wrapper script is used on bare-metal; in Docker/K8s `plex-organizer` is installed directly inside the container.
 
 ## Sonarr/Radarr integration
 
@@ -201,7 +203,10 @@ tests/
 
 - Install in editable mode (dev): `pip install -e ".[dev]"`.
 - Install for production (as root): `sudo pipx install git+https://github.com/Toomas633/Plex-Organizer.git`.
+- Symlink for other users: `sudo ln -s /root/.local/bin/plex-organizer /usr/local/bin/plex-organizer` (required if qBittorrent, Sonarr, or Radarr run as non-root users).
 - Run: `sudo plex-organizer <start_dir> [torrent_hash]` or `sudo python -m plex_organizer <start_dir> [torrent_hash]`.
+- qBittorrent automation: `sudo plex-organizer "%D" "%I"` in "Run external program on torrent finished". Non-root qBittorrent users need a NOPASSWD sudoers rule.
+- Sonarr/Radarr automation: a `plex-organizer-sudo` wrapper script calls `sudo plex-organizer "$@"`. The wrapper path is set as the Custom Script path in Sonarr/Radarr. The service user needs a NOPASSWD sudoers rule. In Docker/K8s, `plex-organizer` is installed inside the container and the wrapper is not needed (containers typically run as root).
 - Index generation: via `plex-organizer --manage` → option 4.
 - Interactive management menu: `plex-organizer --manage` (menu-driven post-install helper: view data dir, view logs, migrate old config, generate indexes, kill running instances, custom pipeline run, migrate TV indexes, edit configuration).
 - The project is packaged via `pyproject.toml` — dependencies are declared there (not in `requirements.txt`).

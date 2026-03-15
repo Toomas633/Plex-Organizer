@@ -36,13 +36,23 @@ Version 6.0 changed how Plex Organizer is installed and updated. The old method 
    cp /path/to/old/Plex-Organizer/config.ini /root/.config/plex-organizer/
    ```
 
-4. **Update any automation** (e.g. qBittorrent "Run external program on torrent finished") to use the new command:
+4. **Create a symlink** so all users can find the binary:
+
+   ```bash
+   sudo ln -s /root/.local/bin/plex-organizer /usr/local/bin/plex-organizer
+   ```
+
+5. **Update any automation** (e.g. qBittorrent "Run external program on torrent finished") to use the new command:
 
    ```
    sudo plex-organizer "%D" "%I"
    ```
 
-5. **Remove the old clone** once everything works:
+   If qBittorrent runs as a non-root user, add a NOPASSWD sudoers rule — see the [README](README.md#automated-running) for details.
+
+   For Sonarr/Radarr Custom Script setup (including Docker/K8s), see the [README](README.md#via-sonarr--radarr-custom-script).
+
+6. **Remove the old clone** once everything works:
 
    ```bash
    rm -rf /path/to/old/Plex-Organizer
