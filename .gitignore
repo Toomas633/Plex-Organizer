@@ -75,6 +75,13 @@ instance/
 # Sphinx documentation
 docs/_build/
 
+# docs (Jekyll site)
+docs/_site/
+docs/.jekyll-cache/
+docs/.jekyll-metadata
+docs/vendor/
+docs/.bundle/
+docs/.well-known/
 # PyBuilder
 .pybuilder/
 target/
@@ -199,3 +206,4 @@ testData/
 config.ini
 logs/
 *.lock
+!docs/Gemfile.lock

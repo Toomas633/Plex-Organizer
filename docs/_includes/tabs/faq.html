@@ -1,0 +1,245 @@
+<h1>Frequently Asked Questions</h1>
+<h2>General</h2>
+<details>
+  <summary>Does Plex Organizer delete my files?</summary>
+  <div class="details-body">
+    <p>
+      Cleanup is intentional and aggressive. Only video files
+      (<code>.mkv</code>, <code>.mp4</code>), in-progress
+      <code>.!qB</code> downloads, and <code>.plex_organizer.index</code> files
+      are kept. Everything else — subtitle files, NFOs, artwork, text files,
+      sample files — is deleted.
+    </p>
+    <p>
+      Subtitle files are embedded into the video container
+      <strong>before</strong> cleanup runs (when
+      <code>enable_subtitle_embedding = true</code>), so they are preserved
+      inside the container.
+    </p>
+    <p>
+      Back up any files you want to keep before running the organizer on a new
+      library.
+    </p>
+  </div>
+</details>
+<details>
+  <summary>Does it require root?</summary>
+  <div class="details-body">
+    <p>
+      Yes. The organizer requires root privileges to move and rename files
+      across mount points. Always run with <code>sudo</code>.
+    </p>
+  </div>
+</details>
+<details>
+  <summary>Can I run it without qBittorrent?</summary>
+  <div class="details-body">
+    <p>
+      Yes. The torrent hash argument is optional. Omit it to skip torrent
+      removal:
+    </p>
+    <pre><code>sudo plex-organizer /mnt/media</code></pre>
+  </div>
+</details>
+<details>
+  <summary>What happens if the organizer crashes mid-run?</summary>
+  <div class="details-body">
+    <p>
+      Files that were already moved and indexed remain safe. The organizer uses
+      a single-instance lock and a per-library index, so a subsequent run will
+      skip already-processed files and resume from where it left off. Partially
+      processed files may need to be re-run manually.
+    </p>
+  </div>
+</details>
+<details>
+  <summary>Will it re-process files I've already organized?</summary>
+  <div class="details-body">
+    <p>
+      No. Once a file is in the final renamed layout (e.g.
+      <code>Black Bird S01E01.mp4</code> inside
+      <code>tv/Black Bird/Season 1/</code>), it is added to the index and
+      skipped on future runs.
+    </p>
+  </div>
+</details>
+<h2>Installation</h2>
+<details>
+  <summary>Where is `plex-organizer` after installing?</summary>
+  <div class="details-body">
+    <p>
+      The command is installed into root's pipx environment. After running
+      <code>sudo pipx ensurepath</code>, it should be available as
+      <code>sudo plex-organizer</code>. If not, check that
+      <code>/root/.local/bin</code> is on root's <code>PATH</code>.
+    </p>
+  </div>
+</details>
+<details>
+  <summary>How do I uninstall?</summary>
+  <div class="details-body">
+    <pre><code>sudo pipx uninstall plex-organizer</code></pre>
+  </div>
+</details>
+<h2>Configuration</h2>
+<details>
+  <summary>Where is config.ini?</summary>
+  <div class="details-body">
+    <p>
+      Default location: <code>/root/.config/plex-organizer/config.ini</code>
+    </p>
+    <p>
+      You can override this with the <code>PLEX_ORGANIZER_DIR</code> environment
+      variable.
+    </p>
+  </div>
+</details>
+<details>
+  <summary>I added a custom option to config.ini and it disappeared.</summary>
+  <div class="details-body">
+    <p>
+      The config is auto-managed: unknown options inside known sections are
+      removed on startup. Only options listed in the
+      <a href="#configuration">Configuration reference</a> are preserved.
+    </p>
+  </div>
+</details>
+<details>
+  <summary>How do I disable subtitle fetching?</summary>
+  <div class="details-body">
+    <p>Set <code>fetch_subtitles</code> to an empty value:</p>
+    <pre><code>[Subtitles]
+fetch_subtitles =</code></pre>
+  </div>
+</details>
+<details>
+  <summary>How do I disable the subtitle pipeline entirely?</summary>
+  <div class="details-body">
+    <pre><code>[Subtitles]
+enable_subtitle_embedding = false
+fetch_subtitles =
+sync_subtitles = false</code></pre>
+  </div>
+</details>
+<h2>Subtitle pipeline</h2>
+<details>
+  <summary>External subtitles are being deleted — how do I keep them?</summary>
+  <div class="details-body">
+    <p>Enable subtitle embedding before cleanup runs:</p>
+    <pre><code>[Subtitles]
+enable_subtitle_embedding = true</code></pre>
+    <p>
+      External subtitle files are embedded into the video container and then
+      removed from disk. They are preserved inside the <code>.mkv</code>/<code
+        >.mp4</code
+      >
+      file itself.
+    </p>
+  </div>
+</details>
+<details>
+  <summary>Subtitle syncing is too slow.</summary>
+  <div class="details-body">
+    <p>
+      Subtitle syncing uses <code>ffsubsync</code>, which processes the entire
+      audio track. You can disable it:
+    </p>
+    <pre><code>[Subtitles]
+sync_subtitles = false</code></pre>
+  </div>
+</details>
+<details>
+  <summary>What subtitle formats are supported for syncing?</summary>
+  <div class="details-body">
+    <p>
+      Only text-based streams: SRT, ASS/SSA, <code>mov_text</code>, and WebVTT.
+      Bitmap formats (PGS, DVB, VobSub) are left unchanged.
+    </p>
+  </div>
+</details>
+<h2>Indexing</h2>
+<details>
+  <summary>How do I force re-processing of already-indexed files?</summary>
+  <div class="details-body">
+    <p>Delete the index file(s) and run again:</p>
+    <pre><code>rm /mnt/media/movies/.plex_organizer.index
+rm /mnt/media/tv/.plex_organizer.index
+sudo plex-organizer /mnt/media</code></pre>
+  </div>
+</details>
+<details>
+  <summary>
+    How do I generate an index for an existing library without re-processing?
+  </summary>
+  <div class="details-body">
+    <p>Use the management menu:</p>
+    <pre><code>sudo plex-organizer --manage   # option 4</code></pre>
+    <p>
+      This scans the library and adds all already-organized files to the index
+      without moving or renaming anything.
+    </p>
+  </div>
+</details>
+<details>
+  <summary>
+    I upgraded from an older version and TV files are being re-processed.
+  </summary>
+  <div class="details-body">
+    <p>
+      Older versions stored one index per show
+      (<code>tv/&lt;Show&gt;/.plex_organizer.index</code>). Migrate them to the
+      new root index:
+    </p>
+    <pre><code>sudo plex-organizer --manage   # option 7</code></pre>
+    <p>
+      This merges all per-show index files into a single
+      <code>tv/.plex_organizer.index</code> and removes the old files.
+    </p>
+  </div>
+</details>
+<h2>Migrating from v5.0 to v6.0</h2>
+<details>
+  <summary>What changed between v5.0 and v6.0?</summary>
+  <div class="details-body">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>v5.0 (old)</th>
+          <th>v6.0+ (new)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Install</td>
+          <td><code>git clone</code> + <code>run.sh</code></td>
+          <td><code>pipx install git+…</code></td>
+        </tr>
+        <tr>
+          <td>Update</td>
+          <td><code>./update.sh</code></td>
+          <td><code>pipx upgrade plex-organizer</code></td>
+        </tr>
+        <tr>
+          <td>Run</td>
+          <td><code>sudo bash run.sh &lt;dir&gt; [hash]</code></td>
+          <td><code>sudo plex-organizer &lt;dir&gt; [hash]</code></td>
+        </tr>
+        <tr>
+          <td>Kill</td>
+          <td>—</td>
+          <td><code>sudo plex-organizer --manage</code> → option 5</td>
+        </tr>
+        <tr>
+          <td>Config location</td>
+          <td>Repo directory</td>
+          <td><code>/root/.config/plex-organizer/</code></td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      See the full migration steps on the
+      <a href="#installation-migrate">Installation</a> page.
+    </p>
+  </div>
+</details>

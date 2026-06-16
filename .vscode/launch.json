@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Docs: Serve (live reload)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd ${workspaceFolder}/docs && bundle exec jekyll serve --port 4000 --livereload"
+      ],
+      "console": "integratedTerminal"
+    }
+  ]
+}

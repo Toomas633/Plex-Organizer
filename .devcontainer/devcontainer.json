@@ -10,7 +10,7 @@
     "source=vscode-server-data,target=/root/.vscode-server/data,type=volume"
   ],
   "remoteUser": "vscode",
-  "postCreateCommand": "python3 -m venv venv && ./venv/bin/python -m pip install --upgrade pip && ./venv/bin/python -m pip install -e '.[dev]'",
+  "postCreateCommand": "python3 -m venv venv && ./venv/bin/python -m pip install --upgrade pip && ./venv/bin/python -m pip install -e '.[dev]' && cd docs && bundle config set --local path vendor/bundle && bundle install",
   "customizations": {
     "vscode": {
       "settings": {
@@ -22,7 +22,7 @@
         "[python]": {
           "editor.defaultFormatter": "ms-python.black-formatter"
         },
-        "sonarlint.ls.javaHome": "/usr/lib/jvm/java-25-openjdk-arm64"
+        "sonarlint.ls.javaHome": "/usr/lib/jvm/java-current"
       },
       "extensions": [
         "ms-python.python",

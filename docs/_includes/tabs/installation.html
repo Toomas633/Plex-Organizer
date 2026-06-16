@@ -1,0 +1,197 @@
+<h1>Installation</h1>
+<nav class="toc">
+  <h4>On this page</h4>
+  <ol>
+    <li><a href="#installation-requirements">Requirements</a></li>
+    <li><a href="#installation-install">Install</a></li>
+    <li><a href="#installation-update">Update</a></li>
+    <li><a href="#installation-data-directory">Data directory</a></li>
+    <li><a href="#installation-first-run">First run</a></li>
+    <li><a href="#installation-manage">Interactive management menu</a></li>
+    <li><a href="#installation-migrate">Migrating from v5.0</a></li>
+  </ol>
+</nav>
+<h2 id="installation-requirements">Requirements</h2>
+<ul>
+  <li><strong>Python 3.10+</strong></li>
+  <li>
+    <strong>
+      <a href="https://pipx.pypa.io/" target="_blank" rel="noopener">pipx</a>
+    </strong>
+    — recommended installer (isolates dependencies)
+  </li>
+  <li>
+    <strong>Root privileges</strong> — the organizer must run as
+    <code>root</code> to move and rename media files
+  </li>
+</ul>
+<p>
+  <code>ffmpeg</code> and <code>ffprobe</code> are bundled automatically via
+  <a
+    href="https://pypi.org/project/static-ffmpeg/"
+    target="_blank"
+    rel="noopener"
+  >
+    static-ffmpeg
+  </a>
+  — no separate install needed.
+</p>
+<hr />
+<h2 id="installation-install">Install</h2>
+<p>
+  Install directly from GitHub. Because the organizer requires root, install it
+  into root's environment so the <code>plex-organizer</code> command is
+  available on root's <code>PATH</code>:
+</p>
+<pre><code>sudo apt install pipx          # if pipx is not already installed
+sudo pipx install git+https://github.com/Toomas633/Plex-Organizer.git
+sudo pipx ensurepath</code></pre>
+<div class="callout note">
+  <div class="callout-title">Note</div>
+  <code>sudo pipx ensurepath</code> adds pipx's binary directory to root's
+  <code>PATH</code>. You may need to restart the shell session or run
+  <code>source ~/.bashrc</code> for the change to take effect.
+</div>
+<p>Verify the install:</p>
+<pre><code>sudo plex-organizer --help</code></pre>
+<hr />
+<h2 id="installation-update">Update</h2>
+<pre><code>sudo pipx upgrade plex-organizer</code></pre>
+<hr />
+<h2 id="installation-data-directory">Data directory</h2>
+<p>
+  By default, <code>config.ini</code>, log files, and the lock file are stored
+  at:
+</p>
+<pre><code>/root/.config/plex-organizer/</code></pre>
+<p>
+  You can override this with the <code>PLEX_ORGANIZER_DIR</code> environment
+  variable, or by running the organizer from a directory that already contains a
+  <code>config.ini</code>.
+</p>
+<hr />
+<h2 id="installation-first-run">First run</h2>
+<p>
+  On the first run, <code>config.ini</code> is automatically created with all
+  default values. You can review and edit it before running again:
+</p>
+<pre><code>sudo plex-organizer /mnt/media   # creates config.ini and exits cleanly
+cat /root/.config/plex-organizer/config.ini</code></pre>
+<p>
+  See the <a href="#configuration">Configuration</a> page for all available
+  options.
+</p>
+<hr />
+<h2 id="installation-manage">Interactive management menu</h2>
+<p>
+  After installation, the management menu is available for maintenance tasks:
+</p>
+<pre><code>sudo plex-organizer --manage</code></pre>
+<table>
+  <thead>
+    <tr>
+      <th>Option</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>View data directory path</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>View log files</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Migrate config from an older version</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Generate/rebuild library indexes</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Kill a running organizer process</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Custom pipeline run</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Migrate TV indexes (v5 → v6 format)</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>Edit configuration</td>
+    </tr>
+  </tbody>
+</table>
+<hr />
+<h2 id="installation-migrate">Migrating from v5.0</h2>
+<p>
+  Version 6.0 changed the install method. The old <code>git clone</code> +
+  <code>run.sh</code> approach is no longer supported.
+</p>
+<table>
+  <thead>
+    <tr>
+      <th></th>
+      <th>v5.0 (old)</th>
+      <th>v6.0+ (new)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Install</td>
+      <td><code>git clone</code> + <code>run.sh</code></td>
+      <td><code>pipx install …</code></td>
+    </tr>
+    <tr>
+      <td>Update</td>
+      <td><code>./update.sh</code></td>
+      <td><code>pipx upgrade plex-organizer</code></td>
+    </tr>
+    <tr>
+      <td>Run</td>
+      <td><code>sudo bash run.sh &lt;dir&gt;</code></td>
+      <td><code>sudo plex-organizer &lt;dir&gt;</code></td>
+    </tr>
+    <tr>
+      <td>Config</td>
+      <td>Repo directory</td>
+      <td><code>/root/.config/plex-organizer/</code></td>
+    </tr>
+  </tbody>
+</table>
+<h3>Migration steps</h3>
+<ol>
+  <li>
+    <p>Install pipx (if not already installed):</p>
+    <pre><code>sudo apt install pipx
+sudo pipx ensurepath</code></pre>
+  </li>
+  <li>
+    <p>Install Plex Organizer:</p>
+    <pre><code>sudo pipx install git+https://github.com/Toomas633/Plex-Organizer.git</code></pre>
+  </li>
+  <li>
+    <p>Move your existing config:</p>
+    <pre><code>mkdir -p /root/.config/plex-organizer
+cp /path/to/old/Plex-Organizer/config.ini /root/.config/plex-organizer/</code></pre>
+  </li>
+  <li>
+    <p>Migrate TV indexes to the new per-library format:</p>
+    <pre><code>sudo plex-organizer --manage   # choose option 7</code></pre>
+  </li>
+  <li>
+    <p>Update your qBittorrent automation command:</p>
+    <pre><code>sudo plex-organizer "%D" "%I"</code></pre>
+  </li>
+  <li>
+    <p>Remove the old clone once everything is working:</p>
+    <pre><code>rm -rf /path/to/old/Plex-Organizer</code></pre>
+  </li>
+</ol>

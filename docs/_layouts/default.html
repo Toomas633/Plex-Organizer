@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      {% if page.title == "Plex Organizer" %}Plex Organizer{% else %}{{
+      page.title }} — Plex Organizer{% endif %}
+    </title>
+    <meta
+      name="description"
+      content="{{ page.description | default: site.description }}"
+    />
+    <script>
+      !(function () {
+        var stored = null;
+        try {
+          stored = localStorage.getItem("theme");
+        } catch (e) {
+          console.warn(
+            "localStorage unavailable, using system theme preference:",
+            e,
+          );
+        }
+        var t =
+          stored ||
+          (globalThis.matchMedia("(prefers-color-scheme: light)").matches
+            ? "light"
+            : "dark");
+        document.documentElement.dataset.theme = t;
+      })();
+    </script>
+    <link
+      rel="icon"
+      href="{{ '/favicon.svg' | relative_url }}"
+      type="image/svg+xml"
+    />
+    <link rel="stylesheet" href="{{ '/assets/css/main.css' | relative_url }}" />
+  </head>
+  <body>
+    <header id="header">
+      <div class="header-inner">
+        <a href="#home" class="logo">
+          <span class="logo-mark">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <rect x="6.5" y="9" width="14" height="3.2" rx="1.6" />
+              <rect x="6.5" y="14.4" width="10" height="3.2" rx="1.6" />
+              <rect x="6.5" y="19.8" width="6.5" height="3.2" rx="1.6" />
+              <path
+                d="M20.4 16.1c0-1.16 1.27-1.87 2.26-1.26l4.7 2.9c.95.58.95 1.96 0 2.54l-4.7 2.9c-.99.61-2.26-.1-2.26-1.26z"
+              />
+            </svg>
+          </span>
+          Plex Organizer
+        </a>
+        <nav aria-label="Site sections">
+          <div
+            class="nav-main"
+            id="nav-main"
+            role="tablist"
+            aria-label="Site sections"
+          >
+            {% for item in site.data.nav %} {% assign tab_id = item.url |
+            remove: '#' %}
+            <a
+              href="{{ item.url }}"
+              data-tab="{{ tab_id }}"
+              id="tablink-{{ tab_id }}"
+              role="tab"
+              aria-controls="{{ tab_id }}"
+            >
+              {{ item.title }}
+            </a>
+            {% endfor %}
+          </div>
+        </nav>
+        <div class="nav-actions">
+          <a
+            class="icon-link"
+            href="https://toomas633.com"
+            target="_blank"
+            rel="noopener"
+            aria-label="Homepage"
+          >
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M2.4 7.5 8 2.6l5.6 4.9" />
+              <path d="M3.9 6.6V13h8.2V6.6" />
+              <path d="M6.5 13V9.2h3V13" />
+            </svg>
+          </a>
+          <a
+            class="icon-link"
+            href="https://github.com/Toomas633/Plex-Organizer"
+            target="_blank"
+            rel="noopener"
+            aria-label="GitHub"
+          >
+            <svg viewBox="0 0 16 16" fill="currentColor">
+              <path
+                d="M8 .3a8 8 0 0 0-2.5 15.6c.4.1.5-.2.5-.4v-1.3c-2.2.5-2.7-1.1-2.7-1.1-.4-.9-1-1.2-1-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.2 1.9.9 2.3.7.1-.5.3-.9.5-1.1-1.8-.2-3.7-.9-3.7-3.9 0-.9.3-1.6.8-2.2 0-.2-.3-1 .1-2.2 0 0 .7-.2 2.2.8a7.7 7.7 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.2.2 2 .1 2.2.5.6.8 1.3.8 2.2 0 3-1.9 3.7-3.7 3.9.3.3.6.8.6 1.5v2.2c0 .2.1.5.6.4A8 8 0 0 0 8 .3"
+              />
+            </svg>
+          </a>
+          <button
+            id="theme-toggle"
+            aria-label="Toggle color theme"
+            onclick="toggleTheme()"
+          >
+            <svg
+              class="icon-sun"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="8" cy="8" r="3" />
+              <path
+                d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.2 3.2l1 1M11.8 11.8l1 1M11.8 3.2l1-1M3.2 11.8l1-1"
+              />
+            </svg>
+            <svg
+              class="icon-moon"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            >
+              <path d="M13 9.5A6 6 0 0 1 6.5 3a5.5 5.5 0 1 0 6.5 6.5z" />
+            </svg>
+          </button>
+          <button id="menu-btn" aria-label="Toggle menu" onclick="toggleMenu()">
+            <svg
+              viewBox="0 0 18 18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+            >
+              <line x1="2" y1="4" x2="16" y2="4" />
+              <line x1="2" y1="9" x2="16" y2="9" />
+              <line x1="2" y1="14" x2="16" y2="14" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+    <main id="main">{{ content }}</main>
+    <footer id="footer">
+      <div class="footer-inner">
+        <span>
+          Released under the
+          <a
+            href="https://github.com/Toomas633/Plex-Organizer/blob/main/LICENSE"
+            target="_blank"
+            rel="noopener"
+          >
+            GPL-3.0 License
+          </a>
+          .
+        </span>
+        <span>
+          Maintained by
+          <a href="https://github.com/Toomas633" target="_blank" rel="noopener">
+            Toomas633
+          </a>
+          .
+        </span>
+        <span class="footer-links">
+          <a
+            href="https://github.com/Toomas633/Plex-Organizer/releases"
+            target="_blank"
+            rel="noopener"
+          >
+            Releases
+          </a>
+          <a
+            href="https://github.com/Toomas633/Plex-Organizer/issues"
+            target="_blank"
+            rel="noopener"
+          >
+            Issues
+          </a>
+          <a href="#home">↑ Top</a>
+        </span>
+      </div>
+    </footer>
+    <script src="{{ '/assets/js/site.js' | relative_url }}"></script>
+  </body>
+</html>

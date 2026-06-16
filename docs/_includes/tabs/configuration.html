@@ -1,0 +1,341 @@
+<h1>Configuration</h1>
+<p>
+  All configuration is managed through <code>config.ini</code>, which is
+  auto-created on first run and automatically maintained on every startup —
+  missing options are added and unknown options are removed.
+</p>
+<nav class="toc">
+  <h4>On this page</h4>
+  <ol>
+    <li><a href="#configuration-location">Config file location</a></li>
+    <li><a href="#configuration-qbt">[qBittorrent]</a></li>
+    <li><a href="#configuration-settings">[Settings]</a></li>
+    <li><a href="#configuration-logging">[Logging]</a></li>
+    <li><a href="#configuration-audio">[Audio]</a></li>
+    <li><a href="#configuration-subtitles">[Subtitles]</a></li>
+    <li><a href="#configuration-example">Full example</a></li>
+  </ol>
+</nav>
+<h2 id="configuration-location">Config file location</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Location</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>/root/.config/plex-organizer/config.ini</code></td>
+      <td>Default (when running as root)</td>
+    </tr>
+    <tr>
+      <td><code>$PLEX_ORGANIZER_DIR/config.ini</code></td>
+      <td>Override via environment variable</td>
+    </tr>
+    <tr>
+      <td><code>./config.ini</code></td>
+      <td>
+        Current directory, if a <code>config.ini</code> already exists there
+      </td>
+    </tr>
+  </tbody>
+</table>
+<hr />
+<h2 id="configuration-qbt">[qBittorrent]</h2>
+<p>
+  Controls torrent removal after processing. Torrent removal is
+  <strong>best-effort</strong> — failures are logged and processing continues.
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>Option</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>host</code></td>
+      <td><code>http://localhost:8081</code></td>
+      <td>Base URL for the qBittorrent Web API</td>
+    </tr>
+    <tr>
+      <td><code>username</code></td>
+      <td><em>(empty)</em></td>
+      <td>Web API username</td>
+    </tr>
+    <tr>
+      <td><code>password</code></td>
+      <td><em>(empty)</em></td>
+      <td>Web API password</td>
+    </tr>
+  </tbody>
+</table>
+<div class="callout note">
+  <div class="callout-title">Note</div>
+  Torrent removal only runs when a torrent hash is passed as the second
+  argument. See <a href="#usage">Usage</a>.
+</div>
+<hr />
+<h2 id="configuration-settings">[Settings]</h2>
+<p>Core organizer behaviour.</p>
+<table>
+  <thead>
+    <tr>
+      <th>Option</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>delete_duplicates</code></td>
+      <td><code>false</code></td>
+      <td>
+        When <code>true</code>, deletes the source file if the destination
+        already exists
+      </td>
+    </tr>
+    <tr>
+      <td><code>include_quality</code></td>
+      <td><code>true</code></td>
+      <td>
+        Appends quality tag (e.g. <code>1080p</code>) to renamed files. Falls
+        back to probing video stream height via <code>ffprobe</code> when no
+        quality tag is found in the filename
+      </td>
+    </tr>
+    <tr>
+      <td><code>capitalize</code></td>
+      <td><code>true</code></td>
+      <td>Title-cases show and movie names</td>
+    </tr>
+    <tr>
+      <td><code>cpu_threads</code></td>
+      <td><code>4</code></td>
+      <td>Maximum CPU threads used for processing steps</td>
+    </tr>
+  </tbody>
+</table>
+<h3>Quality labels</h3>
+<p>
+  When <code>include_quality</code> is enabled and no tag is found in the
+  filename, <code>ffprobe</code> measures the video height and maps it:
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>Height</th>
+      <th>Label</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>≥ 2160</td>
+      <td><code>2160p</code></td>
+    </tr>
+    <tr>
+      <td>≥ 1440</td>
+      <td><code>1440p</code></td>
+    </tr>
+    <tr>
+      <td>≥ 1080</td>
+      <td><code>1080p</code></td>
+    </tr>
+    <tr>
+      <td>≥ 720</td>
+      <td><code>720p</code></td>
+    </tr>
+    <tr>
+      <td>&lt; 720</td>
+      <td><code>480p</code></td>
+    </tr>
+  </tbody>
+</table>
+<hr />
+<h2 id="configuration-logging">[Logging]</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Option</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>enable_logging</code></td>
+      <td><code>true</code></td>
+      <td>Writes errors to a log file</td>
+    </tr>
+    <tr>
+      <td><code>log_file</code></td>
+      <td><code>plex_organizer.log</code></td>
+      <td>Log file name</td>
+    </tr>
+    <tr>
+      <td><code>clear_log</code></td>
+      <td><code>false</code></td>
+      <td>Clears the log file at the start of each run</td>
+    </tr>
+    <tr>
+      <td><code>timestamped_log_files</code></td>
+      <td><code>false</code></td>
+      <td>
+        Saves timestamped logs into a <code>logs/</code> subfolder instead of a
+        single file
+      </td>
+    </tr>
+    <tr>
+      <td><code>level</code></td>
+      <td><code>INFO</code></td>
+      <td>Log level — <code>INFO</code> or <code>DEBUG</code></td>
+    </tr>
+  </tbody>
+</table>
+<hr />
+<h2 id="configuration-audio">[Audio]</h2>
+<p>
+  Controls automatic audio stream language tagging using AI-based detection.
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>Option</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>enable_audio_tagging</code></td>
+      <td><code>true</code></td>
+      <td>
+        Detects missing audio track languages and writes ISO 639-2 tags into the
+        container
+      </td>
+    </tr>
+    <tr>
+      <td><code>whisper_model_size</code></td>
+      <td><code>tiny</code></td>
+      <td>
+        <code>faster-whisper</code> model size. Larger models are more accurate
+        but slower (<code>tiny</code>, <code>base</code>, <code>small</code>,
+        <code>medium</code>, <code>large</code>)
+      </td>
+    </tr>
+  </tbody>
+</table>
+<p><strong>How it works:</strong></p>
+<ol>
+  <li><code>ffprobe</code> enumerates audio streams in the video file.</li>
+  <li>
+    For streams with a missing or <code>und</code>/<code>unknown</code> language
+    tag, a short WAV sample is extracted with <code>ffmpeg</code>.
+  </li>
+  <li>
+    <code>faster-whisper</code> infers the spoken language from the sample.
+  </li>
+  <li>
+    The ISO 639-2 tag (e.g. <code>eng</code>, <code>spa</code>) is written back
+    into the container via an <code>ffmpeg -c copy</code> remux.
+  </li>
+</ol>
+<hr />
+<h2 id="configuration-subtitles">[Subtitles]</h2>
+<p>
+  Controls the full subtitle pipeline: embedding external subs, fetching from
+  online providers, and syncing timing.
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>Option</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>enable_subtitle_embedding</code></td>
+      <td><code>true</code></td>
+      <td>
+        Embeds external <code>.srt</code>/<code>.ass</code> files found
+        alongside the video (including <code>Subs/</code> subfolders) into the
+        container before cleanup
+      </td>
+    </tr>
+    <tr>
+      <td><code>analyze_embedded_subtitles</code></td>
+      <td><code>true</code></td>
+      <td>
+        Also analyzes already-embedded subtitle streams for missing/unknown
+        language or SDH tags and writes detected metadata back
+      </td>
+    </tr>
+    <tr>
+      <td><code>fetch_subtitles</code></td>
+      <td><code>eng</code></td>
+      <td>
+        Comma-separated ISO 639-2 language codes to fetch (e.g.
+        <code>eng, est</code>). Leave empty to disable
+      </td>
+    </tr>
+    <tr>
+      <td><code>subtitle_providers</code></td>
+      <td><code>opensubtitles, podnapisi, gestdown, tvsubtitles</code></td>
+      <td>Comma-separated list of subtitle providers to use for fetching</td>
+    </tr>
+    <tr>
+      <td><code>sync_subtitles</code></td>
+      <td><code>true</code></td>
+      <td>
+        Synchronizes embedded subtitle timing to the audio track after all other
+        subtitle operations
+      </td>
+    </tr>
+  </tbody>
+</table>
+<h3>Subtitle pipeline order</h3>
+<pre><code>1. embed_subtitles     — embed external .srt/.ass files found on disk
+2. fetch_subtitles     — download missing languages from online providers
+3. sync_subtitles      — align subtitle timing to audio track
+4. cleanup             — remove subtitle files/folders from disk</code></pre>
+<div class="callout warning">
+  <div class="callout-title">Warning</div>
+  Only text-based subtitle streams (SRT, ASS/SSA, <code>mov_text</code>, WebVTT)
+  are synced. Bitmap formats (PGS, DVB, VobSub) are left unchanged by
+  <code>ffsubsync</code>.
+</div>
+<hr />
+<h2 id="configuration-example">Full example config.ini</h2>
+<pre><code>[qBittorrent]
+host = http://localhost:8081
+username = admin
+password = adminadmin
+
+[Settings]
+delete_duplicates = false
+include_quality = true
+capitalize = true
+cpu_threads = 4
+
+[Logging]
+enable_logging = true
+log_file = plex_organizer.log
+clear_log = false
+timestamped_log_files = false
+level = INFO
+
+[Audio]
+enable_audio_tagging = true
+whisper_model_size = tiny
+
+[Subtitles]
+enable_subtitle_embedding = true
+analyze_embedded_subtitles = true
+fetch_subtitles = eng
+subtitle_providers = opensubtitles, podnapisi, gestdown, tvsubtitles
+sync_subtitles = true</code></pre>
