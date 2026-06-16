@@ -14,7 +14,10 @@ RUN set -e; \
     python3 \
     python3-dev \
     python3-pip \
-    python3-venv; \
+    python3-venv \
+    ruby-full \
+    build-essential \
+    zlib1g-dev; \
     \
     # SonarQube for VS Code requires Node.js >= 20.12 for JSON analysis.
     mkdir -p /etc/apt/keyrings; \
@@ -78,6 +81,12 @@ RUN set -e; \
     else \
     echo 'No NPU detected.'; \
     fi; \
+    \
+    # Create an arch-neutral symlink for tooling (e.g. SonarLint) that needs a fixed JAVA_HOME
+    ln -sfn /usr/lib/jvm/java-1.25.0-openjdk-$(dpkg --print-architecture) /usr/lib/jvm/java-current; \
+    \
+    # Install bundler so `bundle` is available on PATH for Jekyll docs
+    gem install bundler --no-document; \
     \
     # Clean up
     apt-get autoremove -y; \

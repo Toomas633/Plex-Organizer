@@ -1,0 +1,218 @@
+<h1>Usage</h1>
+<nav class="toc">
+  <h4>On this page</h4>
+  <ol>
+    <li><a href="#usage-syntax">Syntax</a></li>
+    <li><a href="#usage-modes">Start directory modes</a></li>
+    <li><a href="#usage-manual">Manual running</a></li>
+    <li><a href="#usage-automated">Automated with qBittorrent</a></li>
+    <li><a href="#usage-rename">Rename formats</a></li>
+    <li><a href="#usage-deleted">What gets deleted</a></li>
+    <li><a href="#usage-indexing">Indexing</a></li>
+    <li><a href="#usage-flags">Flags</a></li>
+  </ol>
+</nav>
+<h2 id="usage-syntax">Syntax</h2>
+<pre><code>sudo plex-organizer &lt;start_directory&gt; [torrent_hash]</code></pre>
+<table>
+  <thead>
+    <tr>
+      <th>Argument</th>
+      <th>Required</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>&lt;start_directory&gt;</code></td>
+      <td>Yes</td>
+      <td>
+        The directory to process — either a folder containing
+        <code>tv/</code> and/or <code>movies/</code> subfolders, or a single
+        torrent save path
+      </td>
+    </tr>
+    <tr>
+      <td><code>[torrent_hash]</code></td>
+      <td>No</td>
+      <td>
+        Torrent hash for automatic removal from qBittorrent after processing.
+        Omit for manual runs or to skip removal
+      </td>
+    </tr>
+  </tbody>
+</table>
+<div class="callout important">
+  <div class="callout-title">Important</div>
+  Always wrap arguments in quotes when using shell variables or paths that may
+  contain spaces: <code>sudo plex-organizer "%D" "%I"</code>
+</div>
+<hr />
+<h2 id="usage-modes">Start directory modes</h2>
+<p>The organizer supports two modes, detected automatically from the path:</p>
+<h3>Main folder mode</h3>
+<p>
+  The start directory contains <code>tv/</code> and/or
+  <code>movies/</code> subfolders:
+</p>
+<pre><code>/mnt/media/
+├── tv/
+│   └── ...
+└── movies/
+    └── ...</code></pre>
+<pre><code>sudo plex-organizer /mnt/media</code></pre>
+<p>
+  In this mode, the organizer processes all unindexed content under both
+  <code>tv/</code> and <code>movies/</code>. TV show names are derived from the
+  subdirectory name inside <code>tv/</code>.
+</p>
+<h3>Single folder mode</h3>
+<p>
+  The start directory <strong>is</strong> the torrent save path — its path must
+  contain <code>tv</code> or <code>movies</code> as a path component:
+</p>
+<pre><code>/mnt/media/movies/Venom.2018.BluRay.x264-YTS/
+/mnt/media/tv/Black.Bird.S01/</code></pre>
+<pre><code>sudo plex-organizer /mnt/media/movies/Venom.2018.BluRay.x264-YTS</code></pre>
+<p>
+  This is the recommended mode for qBittorrent automation (use <code>%D</code>).
+  Only the specific download folder is processed rather than the entire library.
+</p>
+<h3>Unrecognized directories</h3>
+<p>
+  If the path does not contain <code>tv</code> or <code>movies</code> and is not
+  a main folder, the organizer
+  <strong>exits immediately without modifying any files</strong>. The torrent is
+  removed if a hash was provided.
+</p>
+<hr />
+<h2 id="usage-manual">Manual running</h2>
+<p>Run the full pipeline on your media library:</p>
+<pre><code>sudo plex-organizer /mnt/media</code></pre>
+<p>Test run on a specific folder (no torrent removal):</p>
+<pre><code>sudo plex-organizer /mnt/media/movies/SomeMovie.2024.1080p</code></pre>
+<hr />
+<h2 id="usage-automated">Automated running with qBittorrent</h2>
+<p>
+  In qBittorrent, go to <strong>Tools → Options → Downloads</strong> and set the
+  "Run external program on torrent finished" field:
+</p>
+<pre><code>sudo plex-organizer "%D" "%I"</code></pre>
+<table>
+  <thead>
+    <tr>
+      <th>qBittorrent variable</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>%D</code></td>
+      <td>Torrent save path (the download directory)</td>
+    </tr>
+    <tr>
+      <td><code>%I</code></td>
+      <td>Torrent hash (for automatic removal after processing)</td>
+    </tr>
+  </tbody>
+</table>
+<div class="callout note">
+  <div class="callout-title">Note</div>
+  Using <code>%D</code> (torrent save path) is recommended over a static path
+  like <code>/mnt/media</code> because it targets only the newly finished
+  torrent rather than re-scanning the entire library on every completion.
+</div>
+<hr />
+<h2 id="usage-rename">Rename formats</h2>
+<h3>TV shows</h3>
+<pre><code>Show Name SxxExx.ext
+Show Name SxxExx Quality.ext      ← when include_quality = true</code></pre>
+<p>Examples:</p>
+<ul>
+  <li><code>Breaking Bad S05E14.mkv</code></li>
+  <li><code>Breaking Bad S05E14 1080p.mkv</code></li>
+</ul>
+<p>Files are moved to:</p>
+<pre><code>tv/&lt;Show Name&gt;/Season &lt;x&gt;/&lt;Show Name&gt; SxxExx [Quality].ext</code></pre>
+<h3>Movies</h3>
+<pre><code>Name (Year).ext
+Name (Year) Quality.ext           ← when include_quality = true</code></pre>
+<p>Examples:</p>
+<ul>
+  <li><code>Dune (2021).mkv</code></li>
+  <li><code>Dune (2021) 2160p.mkv</code></li>
+</ul>
+<p>Files are moved to:</p>
+<pre><code>movies/&lt;Name (Year)&gt;/&lt;Name (Year)&gt; [Quality].ext</code></pre>
+<hr />
+<h2 id="usage-deleted">What gets deleted</h2>
+<div class="callout warning">
+  <div class="callout-title">Warning</div>
+  Cleanup is intentional and aggressive. Review before running on a new library.
+</div>
+<p><strong>Kept:</strong></p>
+<ul>
+  <li>
+    Video files: <code>.mkv</code>, <code>.mp4</code> (and
+    <code>.!qB</code> in-progress downloads)
+  </li>
+  <li>The organizer index file: <code>.plex_organizer.index</code></li>
+</ul>
+<p><strong>Deleted:</strong></p>
+<ul>
+  <li>
+    Any file not matching the above (<code>.srt</code>, <code>.nfo</code>,
+    <code>.txt</code>, <code>.jpg</code>, artwork, etc.)
+  </li>
+  <li>Any file with <code>sample</code> in its name</li>
+  <li>
+    Folders: <code>Subs/</code>, <code>Subtitles/</code>, <code>Extras/</code>,
+    <code>Sample/</code>, <code>Samples/</code>, <code>Featurettes/</code>,
+    poster/artwork folders, <code>Plex Versions/</code>
+  </li>
+</ul>
+<div class="callout important">
+  <div class="callout-title">Important</div>
+  Plex-managed paths (inside <code>Plex Versions/</code>) are
+  <strong>never</strong> modified. The organizer detects and skips them
+  automatically.
+</div>
+<hr />
+<h2 id="usage-indexing">Indexing</h2>
+<p>
+  The organizer keeps a per-library index file
+  (<code>.plex_organizer.index</code>) to skip already-processed files on future
+  runs:
+</p>
+<ul>
+  <li><strong>Movies:</strong> index stored in the movies root</li>
+  <li>
+    <strong>TV shows:</strong> index stored in the TV root (<code>tv/</code>)
+  </li>
+</ul>
+<p>
+  Only files already in the final renamed layout are marked as indexed.
+  Raw/unprocessed filenames are never added to the index.
+</p>
+<p>To rebuild or generate indexes manually:</p>
+<pre><code>sudo plex-organizer --manage   # option 4</code></pre>
+<hr />
+<h2 id="usage-flags">Flags</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Flag</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>--manage</code></td>
+      <td>Open the interactive management menu</td>
+    </tr>
+    <tr>
+      <td><code>--help</code></td>
+      <td>Show usage information</td>
+    </tr>
+  </tbody>
+</table>

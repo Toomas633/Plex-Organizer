@@ -1,0 +1,257 @@
+<section class="hero">
+  <div class="hero-eyebrow">
+    <span class="hero-chip">Python · GPL-3.0</span>
+    <a
+      class="hero-chip hero-chip-sonar"
+      href="https://sonarcloud.io/summary/new_code?id=Toomas633_Plex-Organizer"
+      target="_blank"
+      rel="noopener"
+    >
+      <span class="sonar-dot"></span>Quality Gate: Pass
+    </a>
+  </div>
+  <h1>Automate your<br /><span class="hero-accent">Plex library.</span></h1>
+  <p class="tagline">
+    Rename, organize, and clean TV shows and movies after every download. Embeds
+    subtitles, tags audio languages, and removes the torrent — automatically.
+  </p>
+  <div class="hero-btns">
+    <a class="btn btn-primary" href="#installation">
+      <svg
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        width="14"
+        height="14"
+      >
+        <path d="M8 2v8M4 7l4 4 4-4" />
+        <path d="M2 13h12" />
+      </svg>
+      Get Started
+    </a>
+    <a
+      class="btn btn-outline"
+      href="https://github.com/Toomas633/Plex-Organizer"
+      target="_blank"
+      rel="noopener"
+    >
+      <svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14">
+        <path
+          d="M8 .3a8 8 0 0 0-2.5 15.6c.4.1.5-.2.5-.4v-1.3c-2.2.5-2.7-1.1-2.7-1.1-.4-.9-1-1.2-1-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.2 1.9.9 2.3.7.1-.5.3-.9.5-1.1-1.8-.2-3.7-.9-3.7-3.9 0-.9.3-1.6.8-2.2 0-.2-.3-1 .1-2.2 0 0 .7-.2 2.2.8a7.7 7.7 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.2.2 2 .1 2.2.5.6.8 1.3.8 2.2 0 3-1.9 3.7-3.7 3.9.3.3.6.8.6 1.5v2.2c0 .2.1.5.6.4A8 8 0 0 0 8 .3"
+        />
+      </svg>
+      GitHub
+    </a>
+    <a class="btn btn-ghost" href="#features">Explore features →</a>
+  </div>
+</section>
+<div class="callout warning">
+  <div class="callout-title">Data loss disclaimer</div>
+  Cleanup is intentionally aggressive. Only video files, in-progress
+  <code>.!qB</code> downloads, and the organizer index are preserved. Everything
+  else (subtitles, NFOs, artwork, sample files) is deleted after processing.
+  Back up important data before running.
+</div>
+<hr />
+<h2>What it does</h2>
+<p>
+  Plex Organizer is a Python utility triggered after a torrent finishes
+  downloading. Given a download directory, it runs a sequential pipeline:
+</p>
+<div class="pipeline">
+  <div class="pipeline-step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <p>
+        <strong>Embeds</strong> any external subtitle files into the video
+        container
+      </p>
+    </div>
+  </div>
+  <div class="pipeline-step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <p><strong>Fetches</strong> missing subtitles from online providers</p>
+    </div>
+  </div>
+  <div class="pipeline-step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <p><strong>Syncs</strong> subtitle timing to the audio track</p>
+    </div>
+  </div>
+  <div class="pipeline-step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <p>
+        <strong>Tags</strong> audio streams with the correct ISO 639-2 language
+        code
+      </p>
+    </div>
+  </div>
+  <div class="pipeline-step">
+    <div class="step-num">5</div>
+    <div class="step-body">
+      <p><strong>Cleans up</strong> unwanted files, folders, and samples</p>
+    </div>
+  </div>
+  <div class="pipeline-step">
+    <div class="step-num">6</div>
+    <div class="step-body">
+      <p><strong>Renames & moves</strong> files into a clean Plex layout</p>
+    </div>
+  </div>
+  <div class="pipeline-step">
+    <div class="step-num">7</div>
+    <div class="step-body">
+      <p>
+        <strong>Indexes</strong> processed files so future runs skip
+        already-organized content
+      </p>
+    </div>
+  </div>
+  <div class="pipeline-step">
+    <div class="step-num">8</div>
+    <div class="step-body">
+      <p><strong>Removes</strong> the completed torrent from qBittorrent</p>
+    </div>
+  </div>
+</div>
+<hr />
+<h2>Quick start</h2>
+<p>Install as root (required for file operations):</p>
+<pre><code>sudo pipx install git+https://github.com/Toomas633/Plex-Organizer.git
+sudo pipx ensurepath</code></pre>
+<p>Run manually:</p>
+<pre><code>sudo plex-organizer /mnt/media</code></pre>
+<p>Automated via qBittorrent "Run external program on torrent finished":</p>
+<pre><code>sudo plex-organizer "%D" "%I"</code></pre>
+<p>See the <a href="#installation">Installation guide</a> for full details.</p>
+<hr />
+<h2>Key features</h2>
+<div class="feature-grid">
+  <div class="feature-card">
+    <div class="card-icon">🎬</div>
+    <h3>Smart renaming</h3>
+    <p>
+      TV → <code>Show S01E01 1080p.mkv</code><br />Movie →
+      <code>Title (2024) 1080p.mkv</code>
+    </p>
+  </div>
+  <div class="feature-card">
+    <div class="card-icon">💬</div>
+    <h3>Subtitle pipeline</h3>
+    <p>
+      Embed → Fetch → Sync, fully automated from external files to online
+      providers.
+    </p>
+  </div>
+  <div class="feature-card">
+    <div class="card-icon">🔊</div>
+    <h3>Audio tagging</h3>
+    <p>
+      Detects language via <code>faster-whisper</code> and writes ISO 639-2 tags
+      into the container.
+    </p>
+  </div>
+  <div class="feature-card">
+    <div class="card-icon">📐</div>
+    <h3>Quality detection</h3>
+    <p>
+      Parses filename tag or falls back to probing the video stream height via
+      <code>ffprobe</code>.
+    </p>
+  </div>
+  <div class="feature-card">
+    <div class="card-icon">🛡️</div>
+    <h3>Plex-safe</h3>
+    <p>
+      Skips and never modifies Plex-managed content inside
+      <code>Plex Versions/</code>.
+    </p>
+  </div>
+  <div class="feature-card">
+    <div class="card-icon">📋</div>
+    <h3>Indexing</h3>
+    <p>
+      Per-library index skips already-processed files for fast incremental runs.
+    </p>
+  </div>
+  <div class="feature-card">
+    <div class="card-icon">⚡</div>
+    <h3>qBittorrent</h3>
+    <p>Removes the torrent via Web API after successful processing.</p>
+  </div>
+  <div class="feature-card">
+    <div class="card-icon">🛠️</div>
+    <h3>Management menu</h3>
+    <p>
+      <code>--manage</code> flag for logs, config migration, index generation,
+      and more.
+    </p>
+  </div>
+</div>
+<hr />
+<h2>Directory transformation</h2>
+<div class="dir-compare">
+  <div>
+    <h4>Before — raw torrent download</h4>
+    <pre><code>/mnt/media/
+├── movies/
+│   ├── Venom.2018.BluRay.x264-YTS.mp4
+│   ├── 1917 (2019) [1080p] [BluRay]/
+│   │   └── Subs/
+│   │       ├── English.srt
+│   │       └── Spanish.srt
+│   └── random_file.txt
+└── tv/
+    ├── Black Bird/
+    │   ├── S01E01.mp4
+    │   └── unwanted_file.txt
+    └── Loki/
+        └── S01E01.mp4</code></pre>
+  </div>
+  <div>
+    <h4>After — clean Plex layout</h4>
+    <pre><code>/mnt/media/
+├── movies/
+│   ├── 1917 (2019)/
+│   │   └── 1917 (2019) 1080p.mp4
+│   └── Venom (2018)/
+│       └── Venom (2018).mp4
+└── tv/
+    ├── Black Bird/
+    │   └── Season 1/
+    │       └── Black Bird S01E01.mp4
+    └── Loki/
+        └── Season 1/
+            └── Loki S01E01.mp4</code></pre>
+  </div>
+</div>
+<hr />
+<h2>Requirements</h2>
+<ul>
+  <li><strong>Python 3.10+</strong></li>
+  <li>
+    <strong>Root privileges</strong> — the organizer must be run as
+    <code>root</code> (<code>sudo</code>)
+  </li>
+</ul>
+<p>
+  <code>ffmpeg</code> and <code>ffprobe</code> are bundled automatically via
+  <a
+    href="https://pypi.org/project/static-ffmpeg/"
+    target="_blank"
+    rel="noopener"
+    >static-ffmpeg</a
+  >
+  — no separate install needed.
+</p>
+<div class="callout note">
+  <div class="callout-title">Note</div>
+  Already running? Use <code>sudo plex-organizer --manage</code> to access logs,
+  migrate config, generate indexes, and more.
+</div>

@@ -1,0 +1,20 @@
+title: "Plex Organizer"
+description: "Automated media library organizer for Plex — handles TV, movies, subtitles, audio tagging, and qBittorrent integration."
+url: ""
+baseurl: ""
+
+sass:
+  style: compressed
+  sass_dir: _sass
+
+include:
+  - .well-known
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor/
+  - node_modules/
+  - package.json
+  - package-lock.json
+  - "*.sh"

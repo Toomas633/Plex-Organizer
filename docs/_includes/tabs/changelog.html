@@ -1,0 +1,284 @@
+<h1>Changelog</h1>
+<p>
+  Release history for Plex Organizer. Full diffs and download links are
+  available on the
+  <a
+    href="https://github.com/Toomas633/Plex-Organizer/releases"
+    target="_blank"
+    rel="noopener"
+  >
+    GitHub Releases page </a
+  >.
+</p>
+<div style="margin: 2rem 0 2.5rem; padding-left: 1rem">
+  <div class="release latest">
+    <div class="release-tag">v6.1</div>
+    <div class="release-subtitle">
+      Bug fixes and developer workflow improvements
+    </div>
+    <ul>
+      <li>
+        <strong>Advisory lock fix</strong> — The single-instance lock now keeps
+        the file handle open for the lifetime of the process, preventing the
+        advisory <code>flock</code> from being released prematurely.
+      </li>
+      <li>
+        <strong>Quieter index reads</strong> — Removed spurious error log when
+        an index file does not yet exist; a missing index is a normal first-run
+        condition.
+      </li>
+      <li>
+        <strong>Test script portability</strong> — <code>test.sh</code> now
+        detects the installed <code>plex-organizer</code> command instead of
+        relying on a hard-coded Python script path.
+      </li>
+      <li>
+        <strong>Validation checklist</strong> — Added a post-change validation
+        rule requiring SonarCloud scan, pylint, and pytest to pass before
+        considering a task complete.
+      </li>
+    </ul>
+    <div class="release-link">
+      <a
+        href="https://github.com/Toomas633/Plex-Organizer/releases/tag/v6.1"
+        target="_blank"
+        rel="noopener"
+      >
+        View v6.1 on GitHub →
+      </a>
+    </div>
+  </div>
+  <div class="release">
+    <div class="release-tag">v6.0</div>
+    <div class="release-subtitle">
+      Major rewrite — packaged install, subtitle pipeline, and a full test suite
+    </div>
+    <p><strong>Breaking changes:</strong></p>
+    <ul>
+      <li>
+        <strong>New install method</strong> — Plex Organizer is now installed
+        via <code>pipx</code> instead of cloning the repo and running shell
+        scripts. See <a href="#installation-migrate">Migration from v5.0</a>.
+      </li>
+      <li>
+        <strong>Reworked index structure</strong> — TV indexes are now stored in
+        the TV library root (<code>tv/</code>) instead of per-show directories.
+        Migration tool available via <code>plex-organizer --manage</code> →
+        option 7.
+      </li>
+    </ul>
+    <p><strong>New features:</strong></p>
+    <ul>
+      <li>
+        <strong>Subtitle fetching</strong> — Searches OpenSubtitles, Podnapisi,
+        Gestdown, and TVsubtitles for missing subtitles and embeds them.
+      </li>
+      <li>
+        <strong>Subtitle syncing</strong> — Aligns embedded subtitle timing to
+        the audio track using <code>ffsubsync</code>.
+      </li>
+      <li>
+        <strong>Analyze embedded subtitles toggle</strong> — New
+        <code>analyze_embedded_subtitles</code> option.
+      </li>
+      <li>
+        <strong>Interactive management menu</strong> —
+        <code>plex-organizer --manage</code> provides a menu-driven helper.
+      </li>
+      <li>
+        <strong>Quality detection fallback</strong> — Probes video stream height
+        via <code>ffprobe</code> when no quality tag is found in the filename.
+      </li>
+    </ul>
+    <p><strong>Improvements:</strong></p>
+    <ul>
+      <li>
+        Full <code>pytest</code> + <code>pytest-cov</code> test suite mirroring
+        the source package layout.
+      </li>
+      <li>
+        CI pipeline — SonarCloud analysis, pylint, and pytest run automatically
+        on push.
+      </li>
+      <li>
+        Packaged via <code>pyproject.toml</code> with declared dependencies.
+      </li>
+      <li>Restructured codebase into focused modules.</li>
+    </ul>
+    <div class="release-link">
+      <a
+        href="https://github.com/Toomas633/Plex-Organizer/releases/tag/v6.0"
+        target="_blank"
+        rel="noopener"
+      >
+        View v6.0 on GitHub →
+      </a>
+    </div>
+  </div>
+  <div class="release minor">
+    <div class="release-tag">v5.0</div>
+    <div class="release-subtitle">Indexing and performance improvements</div>
+    <ul>
+      <li>
+        <strong>Per-library indexing</strong> — Keeps track of processed files
+        to speed up future runs on large libraries.
+      </li>
+      <li>Improved debug logging entries.</li>
+      <li>Documentation updates and devcontainer config refactoring.</li>
+    </ul>
+    <div class="release-link">
+      <a
+        href="https://github.com/Toomas633/Plex-Organizer/releases/tag/v5.0"
+        target="_blank"
+        rel="noopener"
+      >
+        View v5.0 on GitHub →
+      </a>
+    </div>
+  </div>
+  <div class="release minor">
+    <div class="release-tag">v4.0</div>
+    <div class="release-subtitle">qBittorrent authentication</div>
+    <ul>
+      <li>
+        <strong>Authentication flow</strong> — Implemented a
+        <code>requests.Session</code>-based authentication for the qBittorrent
+        Web API.
+      </li>
+      <li>
+        Added <code>username</code>/<code>password</code> options to the
+        <code>[qBittorrent]</code> config section.
+      </li>
+      <li>More debug logging lines.</li>
+    </ul>
+    <div class="release-link">
+      <a
+        href="https://github.com/Toomas633/Plex-Organizer/releases/tag/v4.0"
+        target="_blank"
+        rel="noopener"
+      >
+        View v4.0 on GitHub →
+      </a>
+    </div>
+  </div>
+  <div class="release minor">
+    <div class="release-tag">v3.1</div>
+    <div class="release-subtitle">Logging levels, locking, and stability</div>
+    <ul>
+      <li>
+        <strong>Log level option</strong> — Added <code>level</code> to
+        <code>[Logging]</code> supporting <code>INFO</code> and
+        <code>DEBUG</code>.
+      </li>
+      <li>
+        <strong>Single-instance lock</strong> — File-based lock prevents
+        multiple instances from running simultaneously.
+      </li>
+      <li>
+        <strong>Temp file guard</strong> — Added
+        <code>is_script_temp_file()</code> utility to skip internal temp files.
+      </li>
+    </ul>
+    <div class="release-link">
+      <a
+        href="https://github.com/Toomas633/Plex-Organizer/releases/tag/v3.1"
+        target="_blank"
+        rel="noopener"
+      >
+        View v3.1 on GitHub →
+      </a>
+    </div>
+  </div>
+  <div class="release minor">
+    <div class="release-tag">v3.0</div>
+    <div class="release-subtitle">Dev Container and logging improvements</div>
+    <ul>
+      <li>
+        <strong>Timestamped log directories</strong> — Log directory is now
+        created automatically when timestamped logs are enabled.
+      </li>
+      <li>
+        Dev Container enhancements: runtime detection of NVIDIA, Intel, AMD, and
+        Qualcomm GPU drivers.
+      </li>
+      <li>Documentation updates and core codebase refactoring.</li>
+    </ul>
+    <div class="release-link">
+      <a
+        href="https://github.com/Toomas633/Plex-Organizer/releases/tag/v3.0"
+        target="_blank"
+        rel="noopener"
+      >
+        View v3.0 on GitHub →
+      </a>
+    </div>
+  </div>
+  <div class="release minor">
+    <div class="release-tag">v2.0</div>
+    <div class="release-subtitle">
+      Audio tagging, subtitle embedding, and a dev container
+    </div>
+    <ul>
+      <li>
+        <strong>Audio language detection and tagging</strong> — Detects and
+        writes ISO 639-2 audio stream language tags.
+      </li>
+      <li>
+        <strong>Subtitle embedding</strong> — Embeds external subtitle files
+        into the video container.
+      </li>
+      <li>Added VS Code Dev Container support.</li>
+    </ul>
+    <div class="release-link">
+      <a
+        href="https://github.com/Toomas633/Plex-Organizer/releases/tag/v2.0"
+        target="_blank"
+        rel="noopener"
+      >
+        View v2.0 on GitHub →
+      </a>
+    </div>
+  </div>
+  <div class="release minor">
+    <div class="release-tag">v1.3</div>
+    <div class="release-subtitle">Quality of life improvements</div>
+    <ul>
+      <li>
+        Added support for using <code>%D</code> (torrent save path) instead of
+        requiring the full root directory.
+      </li>
+      <li>Added title-case capitalization for show/movie names.</li>
+      <li>
+        Added more configuration options to <code>config.ini</code>, including
+        enhanced logging.
+      </li>
+      <li>Fixed file deletion bug and other minor fixes.</li>
+    </ul>
+    <div class="release-link">
+      <a
+        href="https://github.com/Toomas633/Plex-Organizer/releases/tag/v1.3"
+        target="_blank"
+        rel="noopener"
+      >
+        View v1.3 on GitHub →
+      </a>
+    </div>
+  </div>
+  <div class="release minor">
+    <div class="release-tag">v1.0 – v1.2</div>
+    <div class="release-subtitle">Initial releases</div>
+    <p>
+      Early releases establishing the core renaming, moving, and cleanup
+      pipeline.
+    </p>
+    <div class="release-link">
+      <a
+        href="https://github.com/Toomas633/Plex-Organizer/releases"
+        target="_blank"
+        rel="noopener"
+      >
+        View all releases on GitHub →
+      </a>
+    </div>
+  </div>
+</div>

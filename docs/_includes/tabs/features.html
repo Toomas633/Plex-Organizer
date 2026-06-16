@@ -1,0 +1,300 @@
+<h1>Features</h1>
+<nav class="toc">
+  <h4>On this page</h4>
+  <ol>
+    <li><a href="#features-renaming">File renaming</a></li>
+    <li><a href="#features-subtitles">Subtitle pipeline</a></li>
+    <li><a href="#features-audio">Audio language tagging</a></li>
+    <li><a href="#features-cleanup">Aggressive cleanup</a></li>
+    <li><a href="#features-indexing">Per-library indexing</a></li>
+    <li><a href="#features-qbt">qBittorrent integration</a></li>
+    <li><a href="#features-plex-safety">Plex Version safety</a></li>
+    <li><a href="#features-locking">Single-instance locking</a></li>
+  </ol>
+</nav>
+<h2 id="features-renaming">File renaming</h2>
+<p>
+  Plex Organizer renames media files to a consistent, Plex-friendly format,
+  correctly capitalizing names and optionally appending quality tags.
+</p>
+<h3>TV shows</h3>
+<pre><code>Show Name SxxExx.ext
+Show Name SxxExx Quality.ext   ← include_quality = true</code></pre>
+<ul>
+  <li>
+    Season and episode numbers are zero-padded to two digits
+    (<code>S01E01</code>)
+  </li>
+  <li>
+    Show name is derived from the parent folder name (single-folder mode) or the
+    <code>tv/&lt;Show&gt;/</code> path (main-folder mode)
+  </li>
+  <li>Files land in <code>tv/&lt;Show Name&gt;/Season &lt;x&gt;/</code></li>
+</ul>
+<h3>Movies</h3>
+<pre><code>Name (Year).ext
+Name (Year) Quality.ext        ← include_quality = true</code></pre>
+<ul>
+  <li>Year is extracted from the filename</li>
+  <li>Files land in <code>movies/&lt;Name (Year)&gt;/</code></li>
+  <li>The subfolder never includes quality — only the filename does</li>
+</ul>
+<h3>Quality detection fallback</h3>
+<p>
+  When <code>include_quality = true</code> but the filename contains no quality
+  tag, the organizer probes the video stream height via <code>ffprobe</code> and
+  maps it to the nearest standard label:
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>Stream height</th>
+      <th>Label</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>≥ 2160 px</td>
+      <td><code>2160p</code></td>
+    </tr>
+    <tr>
+      <td>≥ 1440 px</td>
+      <td><code>1440p</code></td>
+    </tr>
+    <tr>
+      <td>≥ 1080 px</td>
+      <td><code>1080p</code></td>
+    </tr>
+    <tr>
+      <td>≥ 720 px</td>
+      <td><code>720p</code></td>
+    </tr>
+    <tr>
+      <td>&lt; 720 px</td>
+      <td><code>480p</code></td>
+    </tr>
+  </tbody>
+</table>
+<hr />
+<h2 id="features-subtitles">Subtitle pipeline</h2>
+<p>Three separate stages handle subtitles, in order:</p>
+<h3>1. Subtitle embedding</h3>
+<p>Enabled by <code>[Subtitles] enable_subtitle_embedding = true</code>.</p>
+<ul>
+  <li>
+    Discovers external subtitle files (<code>.srt</code>, <code>.ass</code>,
+    <code>.ssa</code>, <code>.vtt</code>, etc.) in the video folder and any
+    <code>Subs/</code> or <code>Subtitles/</code> subfolder
+  </li>
+  <li>
+    Detects the subtitle language (ISO 639-2) using <code>langdetect</code>
+  </li>
+  <li>
+    Detects SDH (subtitles for the deaf and hard of hearing) from naming
+    conventions
+  </li>
+  <li>Embeds subtitles into the video container via <code>ffmpeg</code></li>
+</ul>
+<p>
+  When <code>analyze_embedded_subtitles = true</code> (default),
+  already-embedded subtitle streams with missing or unknown language tags are
+  also analyzed and re-tagged.
+</p>
+<h3>2. Subtitle fetching</h3>
+<p>
+  Enabled by <code>[Subtitles] fetch_subtitles = eng</code> (or other language
+  codes).
+</p>
+<ul>
+  <li>
+    Only runs for languages <strong>not</strong> already present as embedded
+    subtitle streams
+  </li>
+  <li>
+    Searches free online providers: OpenSubtitles, Podnapisi, Gestdown,
+    TVsubtitles
+  </li>
+  <li>
+    Downloads the best-matching SRT, embeds it via <code>ffmpeg</code>, then
+    removes the temp file
+  </li>
+  <li>Best-effort — provider failures are logged and processing continues</li>
+</ul>
+<h3>3. Subtitle syncing</h3>
+<p>Enabled by <code>[Subtitles] sync_subtitles = true</code>.</p>
+<ul>
+  <li>Runs after embedding and fetching</li>
+  <li>
+    Extracts each text-based subtitle stream (SRT, ASS/SSA,
+    <code>mov_text</code>, WebVTT) to a temp file
+  </li>
+  <li>
+    Uses <code>ffsubsync</code> to align timing to the video's audio track
+  </li>
+  <li>
+    Compares synced output to the original via SHA-256 — only remuxes if timing
+    actually changed
+  </li>
+  <li><strong>Bitmap formats (PGS, DVB, VobSub) are left unchanged</strong></li>
+</ul>
+<hr />
+<h2 id="features-audio">Audio language tagging</h2>
+<p>Enabled by <code>[Audio] enable_audio_tagging = true</code>.</p>
+<p>
+  Many downloaded videos have audio streams with no language tag, or an
+  incorrect <code>und</code> (undefined) tag. Plex relies on these tags for the
+  audio track selection menu and "original language" feature.
+</p>
+<p><strong>How it works:</strong></p>
+<ol>
+  <li><code>ffprobe</code> enumerates all audio streams</li>
+  <li>
+    For streams with a missing or <code>und</code>/<code>unknown</code> tag, a
+    short WAV sample is extracted
+  </li>
+  <li>
+    <a
+      href="https://github.com/SYSTRAN/faster-whisper"
+      target="_blank"
+      rel="noopener"
+      >faster-whisper</a
+    >
+    runs speech-to-text language detection on the sample
+  </li>
+  <li>
+    The detected ISO 639-2 code (e.g. <code>eng</code>, <code>spa</code>,
+    <code>est</code>) is written back into the container via an
+    <code>ffmpeg -c copy</code> remux
+  </li>
+</ol>
+<p>
+  The Whisper model size is configurable via
+  <code>[Audio] whisper_model_size</code>. The default <code>tiny</code> model
+  is fast and sufficient for most cases.
+</p>
+<hr />
+<h2 id="features-cleanup">Aggressive cleanup</h2>
+<p>
+  Cleanup runs before renaming and moving. It is
+  <strong>intentionally aggressive</strong> so your Plex library stays clean.
+</p>
+<h3>What is kept</h3>
+<ul>
+  <li>Video files: <code>.mkv</code>, <code>.mp4</code></li>
+  <li>In-progress downloads: <code>.!qB</code></li>
+  <li>Organizer index: <code>.plex_organizer.index</code></li>
+</ul>
+<h3>What is deleted</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Examples</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>All non-video files</td>
+      <td>
+        <code>.srt</code>, <code>.nfo</code>, <code>.txt</code>,
+        <code>.jpg</code>, <code>.png</code>, NFO files
+      </td>
+    </tr>
+    <tr>
+      <td>Sample files</td>
+      <td>Any file with <code>sample</code> in its name</td>
+    </tr>
+    <tr>
+      <td>Unwanted folders</td>
+      <td>
+        <code>Subs/</code>, <code>Subtitles/</code>, <code>Extras/</code>,
+        <code>Sample/</code>, <code>Featurettes/</code>
+      </td>
+    </tr>
+    <tr>
+      <td>Artwork folders</td>
+      <td>
+        <code>Posters/</code>, <code>Fanart/</code>, behind-the-scenes folders
+      </td>
+    </tr>
+    <tr>
+      <td>Plex managed</td>
+      <td>
+        <code>Plex Versions/</code> (detected and <strong>skipped</strong>,
+        never modified)
+      </td>
+    </tr>
+  </tbody>
+</table>
+<div class="callout note">
+  <div class="callout-title">Note</div>
+  Subtitle embedding runs <strong>before</strong> cleanup, so
+  <code>Subs/</code> and external <code>.srt</code> files are embedded into the
+  container before being removed from disk.
+</div>
+<hr />
+<h2 id="features-indexing">Per-library indexing</h2>
+<p>
+  After processing, successfully renamed files are added to a
+  <code>.plex_organizer.index</code> JSON file stored in the library root:
+</p>
+<ul>
+  <li>
+    <strong>Movies index</strong> → <code>movies/.plex_organizer.index</code>
+  </li>
+  <li><strong>TV index</strong> → <code>tv/.plex_organizer.index</code></li>
+</ul>
+<p>
+  On future runs, indexed filenames are skipped immediately, making incremental
+  runs fast regardless of library size.
+</p>
+<h3>Rules</h3>
+<ul>
+  <li>
+    Only files already in the <strong>final renamed layout</strong> are indexed
+  </li>
+  <li>
+    Raw/unprocessed names are never added to the index (prevents skipping files
+    that need processing)
+  </li>
+  <li>The index file itself is protected from cleanup deletion</li>
+</ul>
+<hr />
+<h2 id="features-qbt">qBittorrent integration</h2>
+<p>
+  When a torrent hash is provided as the second argument, Plex Organizer calls
+  the qBittorrent Web API to remove the torrent (without deleting files) after
+  successful processing.
+</p>
+<ul>
+  <li>Authenticates via <code>POST /api/v2/auth/login</code></li>
+  <li>
+    Removes the torrent via <code>POST /api/v2/torrents/delete</code> with
+    <code>deleteFiles=false</code>
+  </li>
+  <li>
+    <strong>Best-effort:</strong> authentication or removal failures are logged;
+    the rest of the pipeline is unaffected
+  </li>
+  <li>
+    Configure host and credentials under <code>[qBittorrent]</code> in
+    <code>config.ini</code>
+  </li>
+</ul>
+<hr />
+<h2 id="features-plex-safety">Plex Version safety</h2>
+<p>
+  The organizer never modifies paths inside
+  <code>Plex Versions/</code> subfolders. These contain Plex's on-the-fly
+  transcoded or optimized versions, and touching them would corrupt your
+  library. Detection is automatic.
+</p>
+<hr />
+<h2 id="features-locking">Single-instance locking</h2>
+<p>
+  A file-based advisory lock prevents two instances from running simultaneously
+  on the same data directory. If a second invocation detects the lock, it exits
+  immediately. The lock is released automatically when the process ends.
+</p>
+<p>To kill a stuck instance:</p>
+<pre><code>sudo plex-organizer --manage   # option 5</code></pre>
